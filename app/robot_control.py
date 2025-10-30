@@ -1,5 +1,5 @@
 # robot_control.py
-import os
+import glob, grp, getpass
 
 class RobotManager:
     def __init__(self):
@@ -7,31 +7,66 @@ class RobotManager:
         self.started = False
         self.last_error = None
 
+    def _is_user_in_dialout(self):
+        user = getpass.getuser()
+        return any(user in g.gr_mem for g in grp.getgrall() if g.gr_name == "dialout")
+
+    def diagnostics(self):
+        info = {
+            "user_in_dialout": self._is_user_in_dialout(),
+            "ttyUSB_present": bool(glob.glob("/dev/ttyUSB*")),
+            "hello_symlinks_present": bool(glob.glob("/dev/hello*")),
+            "ttyUSB_list": glob.glob("/dev/ttyUSB*"),
+            "hello_symlink_list": glob.glob("/dev/hello*"),
+            "started": self.started,
+            "last_error": self.last_error,
+        }
+        try:
+            import stretch_body.robot as hello_robot
+            info["stretch_body_import_ok"] = True
+            r = hello_robot.Robot()
+            # Don't enable motors here—just probe PIMU & runstop
+            if hasattr(r, "pimu"):
+                r.pimu.get_status()
+                info["runstop_pressed"] = bool(getattr(r.pimu.status, "runstop_event", 0) == 1)
+            else:
+                info["runstop_pressed"] = None
+            try:
+                r.stop()
+            except Exception:
+                pass
+        except Exception as e:
+            info["stretch_body_import_ok"] = False
+            info["import_error"] = str(e)
+        return info
+
     def startup(self):
-        """
-        Initialize the Stretch robot & enable motors (no motion).
-        Returns (ok, message, meta)
-        """
         if self.started:
             return True, "Robot already started.", {"already_started": True}
-
         try:
-            # Import lazily so audio-only runs don’t require the SDK
             import stretch_body.robot as hello_robot
             self.robot = hello_robot.Robot()
-            if not self.robot.startup():
+            ok = self.robot.startup()
+            if not ok:
                 self.last_error = "robot.startup() returned False"
-                return False, "Failed to startup Stretch SDK.", {"error": self.last_error}
+                # Try to surface runstop immediately
+                meta = {"startup_ok": False}
+                if hasattr(self.robot, "pimu"):
+                    try:
+                        self.robot.pimu.get_status()
+                        meta["runstop_pressed"] = bool(getattr(self.robot.pimu.status, "runstop_event", 0) == 1)
+                    except Exception as e:
+                        meta["pimu_status_error"] = str(e)
+                return False, "Failed to startup Stretch SDK.", meta
 
-            # Check for E-Stop / runstop
-            # If runstop is pressed, motors can't be enabled.
+            # Check runstop after startup
             if hasattr(self.robot, "pimu"):
                 self.robot.pimu.get_status()
                 if getattr(self.robot.pimu.status, "runstop_event", 0) == 1:
-                    self.last_error = "E-Stop / runstop is engaged"
-                    return False, "Runstop is pressed; release it and try again.", {"runstop": True}
+                    self.last_error = "Runstop is pressed"
+                    return False, "Runstop is pressed; release and retry.", {"runstop": True}
 
-            # Enable motors (no motion commands here)
+            # Enable motors, but no motion
             if hasattr(self.robot, "pimu"):
                 self.robot.pimu.enable_motors()
 
@@ -43,16 +78,11 @@ class RobotManager:
             return False, f"Startup error: {e}", {"exception": self.last_error}
 
     def shutdown(self):
-        """
-        Disable motors and shut down the SDK.
-        Returns (ok, message, meta)
-        """
         if not self.started:
             return True, "Robot already stopped.", {"already_stopped": True}
         try:
             if self.robot:
                 try:
-                    # Best-effort: disable motors if possible
                     if hasattr(self.robot, "pimu"):
                         self.robot.pimu.disable_motors()
                 except Exception:
@@ -64,16 +94,3 @@ class RobotManager:
         except Exception as e:
             self.last_error = str(e)
             return False, f"Shutdown error: {e}", {"exception": self.last_error}
-
-    # OPTIONAL: Home/stow example (commented out to avoid accidental motion)
-    def home(self):
-        if not self.started or not self.robot:
-            return False, "Robot not started.", {}
-        try:
-            # Example: stow the robot (safe compact pose)
-            # Many Stretch images include helper methods; if not, issue explicit joint moves.
-            self.robot.stow()  # WARNING: this moves the robot
-            return True, "Robot stowed.", {}
-        except Exception as e:
-            self.last_error = str(e)
-            return False, f"Home/Stow error: {e}", {"exception": self.last_error}

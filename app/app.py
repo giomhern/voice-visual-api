@@ -64,6 +64,10 @@ def robot_home():
     ok, msg, meta = robot.home()
     return ({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}, 200 if ok else 500)
 
+@app.route("/robot/diagnostics", methods=["GET"])
+def robot_diag():
+    return jsonify(robot.diagnostics()), 200
+
 if __name__ == "__main__":
     # host=0.0.0.0 allows calling from other devices on the LAN
     app.run(host="0.0.0.0", port=5000)
