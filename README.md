@@ -54,32 +54,13 @@ cd app
 4. Run on Hello Robot Stretch.
 
 ```
-export MAX_LINEAR_SPEED=0.35
-export MAX_ANGULAR_SPEED=1.0
-export MIXER_CONTROL=Master
-python3 run.py
+python3 -m venv .venv
+source .venv/bin/activate
+pip install flask flask-cors pyttsx3
+
+# If amixer is missing (ALSA):
+sudo apt-get update && sudo apt-get install -y alsa-utils
+
+# Run
+python app.py
 ```
-
-5. Conduct quick tests using your local machine.
-
-```
-# health
-curl http://<robot-ip>:8080/health
-
-# move forward for 1.5s
-curl -X POST http://<robot-ip>:8080/motion/speed \
-  -H "Content-Type: application/json" \
-  -d '{"linear":0.2,"angular":0.0,"duration":1.5}'
-
-# stop
-curl -X POST http://<robot-ip>:8080/motion/stop
-
-# set volume
-curl -X POST http://<robot-ip>:8080/audio/volume \
-  -H "Content-Type: application/json" \
-  -d '{"level":60}'
-```
-
-
-
-
