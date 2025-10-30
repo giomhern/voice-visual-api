@@ -21,4 +21,17 @@ of mental models of tasks.
 
 1. Clone this repository. 
 
+```
+git clone
+```
 
+2. Make sure all dependencies are installed. 
+
+```
+```
+
+3. Navigate to the `src` directory.
+
+```
+cd src
+```
