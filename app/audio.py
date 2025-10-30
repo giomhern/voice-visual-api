@@ -1,93 +1,52 @@
-# audio.py
-import subprocess
-import pyttsx3
-import re
+# app.py
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from audio import set_volume, say_text, list_voices
+from robot_control import RobotManager
 
-# --- Volume control helpers ---
+app = Flask(__name__)
+CORS(app)
 
-def _run_cmd(cmd):
+robot = RobotManager()
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
+
+@app.route("/settings/volume", methods=["POST"])
+def api_set_volume():
+    data = request.get_json(silent=True) or {}
+    level = data.get("level")
+    if level is None:
+        return jsonify({"error": "Missing 'level' (0-100)."}), 400
     try:
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
-        return res.returncode, res.stdout.strip(), res.stderr.strip()
-    except Exception as e:
-        return 1, "", str(e)
+        level = int(level)
+        if not (0 <= level <= 100):
+            raise ValueError
+    except Exception:
+        return jsonify({"error": "Volume 'level' must be an integer 0-100."}), 400
 
-def set_volume(level: int):
-    """
-    Set system output volume to 0-100%. Tries amixer (ALSA). If you use PulseAudio/PipeWire,
-    uncomment the pactl block and comment out amixer.
-    """
-    # --- Option A: ALSA / amixer ---
-    rc, out, err = _run_cmd(["amixer", "sset", "Master", f"{level}%"])
-    if rc == 0:
-        return True, f"System volume set to {level}% via amixer."
+    ok, msg, meta = set_volume(level)
+    return (jsonify({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}), 200 if ok else 500)
 
-    # --- Option B: PulseAudio / PipeWire via pactl ---
-    # sink = "@DEFAULT_SINK@"
-    # rc, out, err = _run_cmd(["pactl", "set-sink-volume", sink, f"{level}%"])
-    # if rc == 0:
-    #     return True, f"System volume set to {level}% via pactl."
+@app.route("/tts/say", methods=["POST"])
+def api_tts_say():
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "Missing or empty 'text'."}), 400
 
-    return False, f"Failed to set volume. amixer error: {err or out}"
+    rate = data.get("rate")          # int-like (words/min for pyttsx3, -s for espeak)
+    voice = data.get("voice")        # substring to match
+    local_gain = data.get("volume")  # 0.0-1.0 for pyttsx3 only
 
-# --- TTS helpers (pyttsx3 offline) ---
+    ok, msg, meta = say_text(text=text, rate=rate, voice=voice, local_gain=local_gain)
+    return (jsonify({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}), 200 if ok else 500)
 
-_engine = None
+@app.route("/tts/voices", methods=["GET"])
+def api_voices():
+    return jsonify(list_voices()), 200
 
-def _get_engine():
-    global _engine
-    if _engine is None:
-        _engine = pyttsx3.init()  # uses e.g. eSpeak on Ubuntu
-    return _engine
-
-def _pick_voice(engine, pattern: str):
-    """
-    Try to choose a voice whose name or id contains `pattern` (case-insensitive).
-    If not found, return None to keep default.
-    """
-    if not pattern or pattern == "auto":
-        return None
-    voices = engine.getProperty("voices") or []
-    rp = re.compile(re.escape(pattern), re.IGNORECASE)
-    for v in voices:
-        name = (getattr(v, "name", "") or "")
-        vid = (getattr(v, "id", "") or "")
-        if rp.search(name) or rp.search(vid):
-            return v
-    return None
-
-def say_text(text: str, rate=None, voice=None, local_gain=None):
-    """
-    Speak `text` using pyttsx3. Optional: rate (wpm), voice (substring), local_gain (0.0-1.0).
-    Returns (ok, message).
-    """
-    try:
-        eng = _get_engine()
-
-        # optional rate
-        if rate is not None:
-            try:
-                rate = int(rate)
-                eng.setProperty("rate", rate)
-            except Exception:
-                pass  # ignore bad rate
-
-        # optional local volume (engine-level gain, not system volume)
-        if local_gain is not None:
-            try:
-                local_gain = float(local_gain)
-                local_gain = max(0.0, min(1.0, local_gain))
-                eng.setProperty("volume", local_gain)
-            except Exception:
-                pass
-
-        # optional voice selection
-        v = _pick_voice(eng, voice)
-        if v:
-            eng.setProperty("voice", v.id)
-
-        eng.say(text)
-        eng.runAndWait()
-        return True, "Spoken."
-    except Exception as e:
-        return False, f"TTS error: {e}"
+if __name__ == "__main__":
+    # host=0.0.0.0 allows calling from other devices on the LAN
+    app.run(host="0.0.0.0", port=5000)
