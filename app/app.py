@@ -47,6 +47,23 @@ def api_tts_say():
 def api_voices():
     return jsonify(list_voices()), 200
 
+
+@app.route("/robot/start", methods=["POST"])
+def robot_start():
+    ok, msg, meta = robot.startup()
+    return ({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}, 200 if ok else 500)
+
+@app.route("/robot/stop", methods=["POST"])
+def robot_stop():
+    ok, msg, meta = robot.shutdown()
+    return ({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}, 200 if ok else 500)
+
+# Optional (motion): uncomment home() in RobotManager first
+@app.route("/robot/home", methods=["POST"])
+def robot_home():
+    ok, msg, meta = robot.home()
+    return ({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}, 200 if ok else 500)
+
 if __name__ == "__main__":
     # host=0.0.0.0 allows calling from other devices on the LAN
     app.run(host="0.0.0.0", port=5000)
