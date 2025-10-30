@@ -17,6 +17,20 @@ gap is exactly what this project tackles to better understand how voice-only, vi
 and hybrid interfaces influence our perceptions of control and primarily, the development
 of mental models of tasks.
 
+## File Structure
+
+The file structure is shown below. `control.py` provides the heart of the API and `run.py` segments the API interface. ALl other files are included for project setup and completeness. 
+
+```bash
+├── app
+│   ├── control.py
+│   └── run.py
+├── misc
+│   └── central_control_node.py
+├── README.md
+└── requirements.txt
+```
+
 ## Getting Started 
 
 1. Clone this repository. 
@@ -25,13 +39,47 @@ of mental models of tasks.
 git clone
 ```
 
-2. Make sure all dependencies are installed. 
+2. Make sure all dependencies are installed. This should be configured to your virtual environment.
 
 ```
+pip install -r requirements.txt
 ```
 
-3. Navigate to the `src` directory.
+3. Navigate to the `app` directory.
 
 ```
-cd src
+cd app
 ```
+
+4. Run on Hello Robot Stretch.
+
+```
+export MAX_LINEAR_SPEED=0.35
+export MAX_ANGULAR_SPEED=1.0
+export MIXER_CONTROL=Master
+python3 run.py
+```
+
+5. Conduct quick tests using your local machine.
+
+```
+# health
+curl http://<robot-ip>:8080/health
+
+# move forward for 1.5s
+curl -X POST http://<robot-ip>:8080/motion/speed \
+  -H "Content-Type: application/json" \
+  -d '{"linear":0.2,"angular":0.0,"duration":1.5}'
+
+# stop
+curl -X POST http://<robot-ip>:8080/motion/stop
+
+# set volume
+curl -X POST http://<robot-ip>:8080/audio/volume \
+  -H "Content-Type: application/json" \
+  -d '{"level":60}'
+```
+
+
+
+
