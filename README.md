@@ -19,7 +19,7 @@ of mental models of tasks.
 
 ## File Structure
 
-The file structure is shown below. `control.py` provides the heart of the API and `run.py` segments the API interface. ALl other files are included for project setup and completeness. 
+The file structure is shown below. `control.py` provides the heart of the API and `run.py` segments the API interface. All other files are included for project setup and completeness. 
 
 ```bash
 ├── app
