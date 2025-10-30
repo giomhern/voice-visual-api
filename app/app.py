@@ -69,5 +69,5 @@ def robot_diag():
     return jsonify(robot.diagnostics()), 200
 
 if __name__ == "__main__":
-    # host=0.0.0.0 allows calling from other devices on the LAN
-    app.run(host="0.0.0.0", port=5000)
+    # run single-process, single-thread, no reloader
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False, threaded=False)
