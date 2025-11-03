@@ -23,15 +23,21 @@ The file structure is shown below. `control.py` provides the heart of the API an
 
 ```bash
 ├── app
-│   ├── control.py
-│   └── run.py
+│   ├── app.py
+│   ├── audio.py
+│   ├── gemini.py
+│   └── robot_control.py
 ├── misc
 │   └── central_control_node.py
 ├── README.md
-└── requirements.txt
+├── requirements.txt
+└── tests
+    └── test.wav
 ```
 
 ## Getting Started 
+
+All of these steps should be performed on the Stretch robot.
 
 1. Clone this repository. 
 
@@ -39,28 +45,73 @@ The file structure is shown below. `control.py` provides the heart of the API an
 git clone
 ```
 
-2. Make sure all dependencies are installed. This should be configured to your virtual environment.
+2. Create a virtual environment and activate it:
+   
+```
+python -m venv myenv
+source myenv/bin/activate
+```
+
+3. Install the required dependencies.
 
 ```
 pip install -r requirements.txt
 ```
 
-3. Navigate to the `app` directory.
+4. Navigate to the `app` directory.
 
 ```
 cd app
 ```
 
-4. Run on Hello Robot Stretch.
+5. Start the Flask API server:
 
 ```
-python3 -m venv .venv
-source .venv/bin/activate
-pip install flask flask-cors pyttsx3
-
-# If amixer is missing (ALSA):
-sudo apt-get update && sudo apt-get install -y alsa-utils
-
-# Run
 python app.py
+```
+
+## Commands 
+
+There are numerous commands you can run in a separate terminal window to ensure your robot can be accessed via API. 
+
+
+### Health/Diagnositics
+
+```
+# health & diag
+curl -s http://localhost:5000/health
+curl -s http://localhost:5000/robot/diagnostics
+```
+
+For quick e-start verification:
+
+```
+# start (release run-stop/estop first)
+curl -s -X POST http://localhost:5000/robot/start
+```
+
+
+### Movement
+
+```
+# move 0.2 m forward
+curl -s -X POST http://localhost:5000/robot/move -H "Content-Type: application/json" -d '{"distance_m":0.2}'
+```
+
+
+### Speech to Modify Settings
+
+```
+arecord -f cd -d 4 -t wav test.wav # record 4 second voice snippet
+# Say "start the robot"
+curl -X POST http://localhost:5000/voice/command \
+  -F "audio=@test.wav" \
+  -F "mime_type=audio/wav"
+```
+
+```
+# use only textual interface
+curl -X POST http://localhost:5000/voice/command \
+  -H "Content-Type: application/json" \
+  -d '{"text":"mute"}'
 ```
