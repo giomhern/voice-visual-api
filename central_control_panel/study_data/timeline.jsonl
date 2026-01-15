@@ -1,0 +1,218 @@
+{"timestamp": "2026-01-13T17:22:43.815849", "step_index": 0, "step": "intro_ra", "event": "say", "text": "System ready. Press ENTER to begin."}
+{"timestamp": "2026-01-13T17:27:32.734000", "step_index": 0, "step": "intro_ra", "event": "say", "text": "System ready. Press ENTER to begin."}
+{"timestamp": "2026-01-13T17:27:35.825732", "step_index": 0, "step": "intro_ra", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:35.839003", "step_index": 1, "step": "intro_stretch", "event": "say", "text": "I am Stretch. Let's set things up."}
+{"timestamp": "2026-01-13T17:27:45.905896", "step_index": 1, "step": "intro_stretch", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:45.920428", "step_index": 2, "step": "global_movement_speed", "event": "say", "text": "Set my default movement speed."}
+{"timestamp": "2026-01-13T17:27:48.865839", "step_index": 2, "step": "global_movement_speed", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:48.879055", "step_index": 3, "step": "global_voice_volume", "event": "say", "text": "Set my default voice volume."}
+{"timestamp": "2026-01-13T17:27:49.777840", "step_index": 3, "step": "global_voice_volume", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:49.792408", "step_index": 4, "step": "global_voice_profile", "event": "say", "text": "Choose my voice profile."}
+{"timestamp": "2026-01-13T17:27:50.257633", "step_index": 4, "step": "global_voice_profile", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:50.272273", "step_index": 5, "step": "global_explainability", "event": "say", "text": "Choose explainability level."}
+{"timestamp": "2026-01-13T17:27:51.169254", "step_index": 5, "step": "global_explainability", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:51.183807", "step_index": 6, "step": "global_confirmation", "event": "say", "text": "Should I confirm changes?"}
+{"timestamp": "2026-01-13T17:27:52.081803", "step_index": 6, "step": "global_confirmation", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:52.096382", "step_index": 7, "step": "global_social_distance", "event": "say", "text": "Choose social distance."}
+{"timestamp": "2026-01-13T17:27:52.689680", "step_index": 7, "step": "global_social_distance", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:52.704349", "step_index": 8, "step": "walk_to_station", "event": "say", "text": "Please guide me to a station."}
+{"timestamp": "2026-01-13T17:27:53.154078", "step_index": 8, "step": "walk_to_station", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:53.167849", "step_index": 9, "step": "desk_config", "event": "say", "text": "Configure desk behavior."}
+{"timestamp": "2026-01-13T17:27:54.097556", "step_index": 9, "step": "desk_config", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:54.111867", "step_index": 10, "step": "desk_demo", "event": "say", "text": "Desk demo complete."}
+{"timestamp": "2026-01-13T17:27:54.609981", "step_index": 10, "step": "desk_demo", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:54.624594", "step_index": 11, "step": "bed_config", "event": "say", "text": "Configure bed behavior."}
+{"timestamp": "2026-01-13T17:27:55.042169", "step_index": 11, "step": "bed_config", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:55.056576", "step_index": 12, "step": "bed_demo", "event": "say", "text": "Bed demo complete."}
+{"timestamp": "2026-01-13T17:27:55.505743", "step_index": 12, "step": "bed_demo", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:55.520197", "step_index": 13, "step": "kitchen_config", "event": "say", "text": "Configure kitchen behavior."}
+{"timestamp": "2026-01-13T17:27:56.081746", "step_index": 13, "step": "kitchen_config", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:56.095549", "step_index": 14, "step": "kitchen_demo", "event": "say", "text": "Kitchen demo complete."}
+{"timestamp": "2026-01-13T17:27:56.609813", "step_index": 14, "step": "kitchen_demo", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:56.624392", "step_index": 15, "step": "situational_rules", "event": "say", "text": "Set situational rules."}
+{"timestamp": "2026-01-13T17:27:57.186011", "step_index": 15, "step": "situational_rules", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:57.199499", "step_index": 16, "step": "end", "event": "say", "text": "Thank you. The session is complete."}
+{"timestamp": "2026-01-13T17:27:58.897813", "step_index": 16, "step": "end", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:58.911931", "step_index": 17, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:27:59.634087", "step_index": 17, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:27:59.647509", "step_index": 18, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:00.001515", "step_index": 18, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:00.015868", "step_index": 19, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:00.193216", "step_index": 19, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:00.206907", "step_index": 20, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:00.417746", "step_index": 20, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:00.432096", "step_index": 21, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:00.609696", "step_index": 21, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:00.624617", "step_index": 22, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:00.769738", "step_index": 22, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:00.783287", "step_index": 23, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:00.945715", "step_index": 23, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:00.960040", "step_index": 24, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:01.089523", "step_index": 24, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:01.103080", "step_index": 25, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:01.250124", "step_index": 25, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:01.264481", "step_index": 26, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:01.377896", "step_index": 26, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:01.392462", "step_index": 27, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:01.521656", "step_index": 27, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:01.535336", "step_index": 28, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:01.665494", "step_index": 28, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:01.680063", "step_index": 29, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:01.777718", "step_index": 29, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:01.780052", "step_index": 30, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:01.921679", "step_index": 30, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:01.935395", "step_index": 31, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:02.049524", "step_index": 31, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:02.063937", "step_index": 32, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:02.161484", "step_index": 32, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:02.163469", "step_index": 33, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:18.158983", "step_index": 32, "step": "unknown", "event": "say", "text": "Restored session at step 32"}
+{"timestamp": "2026-01-13T17:28:18.169852", "step_index": 32, "step": "unknown", "event": "say", "text": "System ready. Press ENTER to begin."}
+{"timestamp": "2026-01-13T17:28:26.290937", "step_index": 32, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:26.304775", "step_index": 33, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:28.162252", "step_index": 33, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:28.177038", "step_index": 34, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:28.402091", "step_index": 34, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:28:28.416716", "step_index": 35, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:28:48.846750", "step_index": 34, "step": "unknown", "event": "say", "text": "Restored session at step 34"}
+{"timestamp": "2026-01-13T17:28:48.857401", "step_index": 34, "step": "unknown", "event": "say", "text": "System ready. Press ENTER to begin."}
+{"timestamp": "2026-01-13T17:30:40.365088", "step_index": 34, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:30:40.378154", "step_index": 35, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:48.315270", "step_index": 34, "step": "unknown", "event": "say", "text": "Restored session at step 34"}
+{"timestamp": "2026-01-13T17:31:48.324405", "step_index": 34, "step": "unknown", "event": "say", "text": "System ready. Press ENTER to begin."}
+{"timestamp": "2026-01-13T17:31:50.020827", "step_index": 34, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:50.035058", "step_index": 35, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:51.988450", "step_index": 35, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:52.001947", "step_index": 36, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:52.515887", "step_index": 36, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:52.530220", "step_index": 37, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:52.771999", "step_index": 37, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:52.786392", "step_index": 38, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:52.996147", "step_index": 38, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:53.010487", "step_index": 39, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:53.172040", "step_index": 39, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:53.186352", "step_index": 40, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:54.163884", "step_index": 40, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:54.177468", "step_index": 41, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:54.452416", "step_index": 41, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:54.467296", "step_index": 42, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:54.644249", "step_index": 42, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:54.657931", "step_index": 43, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:54.820093", "step_index": 43, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:54.834538", "step_index": 44, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:54.980378", "step_index": 44, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:54.994763", "step_index": 45, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:55.140376", "step_index": 45, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:55.154852", "step_index": 46, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:55.300004", "step_index": 46, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:55.314522", "step_index": 47, "step": "unknown", "event": "say", "text": "Study complete."}
+{"timestamp": "2026-01-13T17:31:55.459976", "step_index": 47, "step": "unknown", "event": "advance"}
+{"timestamp": "2026-01-13T17:31:55.474510", "step_index": 48, "step": "unknown", "event": "say", "text": "Study complete."}
+{"event_id": 1, "ts": "2026-01-13T17:36:49.308319", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Welcome and thank you for participating. Today, you\u2019ll be interacting with Stretch. You will configure my behavior for the desk, bed, and kitchen. You will guide me to each area and tell me where we are."}}
+{"event_id": 2, "ts": "2026-01-13T17:36:49.311479", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "System ready. Press ENTER to begin, or send {\"type\":\"advance\"} on /study_event."}}
+{"event_id": 3, "ts": "2026-01-13T17:37:08.903469", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 4, "ts": "2026-01-13T17:37:08.919014", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 5, "ts": "2026-01-13T17:37:14.599856", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": false}}
+{"event_id": 6, "ts": "2026-01-13T17:37:14.616202", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode off."}}
+{"event_id": 7, "ts": "2026-01-13T17:37:17.831600", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 8, "ts": "2026-01-13T17:37:17.846370", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 9, "ts": "2026-01-13T17:37:28.903251", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": false}}
+{"event_id": 10, "ts": "2026-01-13T17:37:28.917878", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode off."}}
+{"event_id": 11, "ts": "2026-01-13T17:37:52.424268", "type": "demo_confirm", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"room": "desk", "yes": true}}
+{"event_id": 12, "ts": "2026-01-13T17:37:52.437384", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Okay. I will perform the desk demo."}}
+{"event_id": 13, "ts": "2026-01-13T17:37:52.443739", "type": "say", "phase": "STATION_DEMO_RUN", "step_id": null, "profile": "user", "room": "desk", "payload": {"text": "Performing desk demo now."}}
+{"event_id": 14, "ts": "2026-01-13T17:37:52.447134", "type": "say", "phase": "STATION_DEMO_RUN", "step_id": null, "profile": "user", "room": "desk", "payload": {"text": "Here is how I will wipe your desk: once. (Demo placeholder)"}}
+{"event_id": 15, "ts": "2026-01-13T17:37:52.450563", "type": "say", "phase": "STATION_DEMO_RUN", "step_id": null, "profile": "user", "room": "desk", "payload": {"text": "Demo complete."}}
+{"event_id": 16, "ts": "2026-01-13T17:37:52.453807", "type": "say", "phase": "WALK_AND_STATIONS", "step_id": null, "profile": "user", "room": "desk", "payload": {"text": "Great. My default behavior has been set."}}
+{"event_id": 17, "ts": "2026-01-13T17:37:52.456842", "type": "say", "phase": "WALK_AND_STATIONS", "step_id": null, "profile": "user", "room": "desk", "payload": {"text": "Please walk with me and guide me. When we reach a station, tell me where we are: desk, bed, or kitchen."}}
+{"event_id": 18, "ts": "2026-01-13T17:37:52.459423", "type": "say", "phase": "WALK_AND_STATIONS", "step_id": null, "profile": "user", "room": "desk", "payload": {"text": "Press 'f' to toggle follow mode. Press 1/2/3 to mark arrival at desk/bed/kitchen."}}
+{"event_id": 19, "ts": "2026-01-13T17:37:56.040446", "type": "follow_toggle", "phase": "WALK_AND_STATIONS", "step_id": null, "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 20, "ts": "2026-01-13T17:37:56.054984", "type": "say", "phase": "WALK_AND_STATIONS", "step_id": null, "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 21, "ts": "2026-01-13T17:38:00.375710", "type": "arrive", "phase": "WALK_AND_STATIONS", "step_id": null, "profile": "user", "room": "desk", "payload": {"room": "desk"}}
+{"event_id": 22, "ts": "2026-01-13T17:38:00.391005", "type": "arrive", "phase": "STATION_CONFIG", "step_id": "desk_movement_speed", "profile": "user", "room": "desk", "payload": {"room": "desk"}}
+{"event_id": 23, "ts": "2026-01-13T17:38:00.396674", "type": "say", "phase": "STATION_CONFIG", "step_id": "desk_movement_speed", "profile": "user", "room": "desk", "payload": {"text": "Affirmative \u2014 I have registered this area as the desk."}}
+{"event_id": 24, "ts": "2026-01-13T17:38:00.399533", "type": "say", "phase": "STATION_CONFIG", "step_id": "desk_movement_speed", "profile": "user", "room": "desk", "payload": {"text": "In this room, you can set preferences that override my general defaults."}}
+{"event_id": 25, "ts": "2026-01-13T17:38:00.401962", "type": "say", "phase": "STATION_CONFIG", "step_id": "desk_movement_speed", "profile": "user", "room": "desk", "payload": {"text": "In the desk area, please set movement speed: slow, medium, or fast."}}
+{"event_id": 26, "ts": "2026-01-13T17:38:00.404275", "type": "say", "phase": "STATION_CONFIG", "step_id": "desk_movement_speed", "profile": "user", "room": "desk", "payload": {"text": "(Waiting for room setting 'desk.movement_speed' via /study_event)"}}
+{"event_id": 27, "ts": "2026-01-13T17:45:42.554843", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Welcome and thank you for participating. Today, you\u2019ll be interacting with Stretch. You will configure my behavior for the desk, bed, and kitchen."}}
+{"event_id": 28, "ts": "2026-01-13T17:45:42.569868", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "System ready. Press ENTER to begin."}}
+{"event_id": 29, "ts": "2026-01-13T17:45:49.424372", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 30, "ts": "2026-01-13T17:45:49.437564", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 31, "ts": "2026-01-13T17:45:58.096946", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 32, "ts": "2026-01-13T17:45:58.112590", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 33, "ts": "2026-01-13T17:45:58.624351", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 34, "ts": "2026-01-13T17:45:58.628868", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 35, "ts": "2026-01-13T17:45:58.800403", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 36, "ts": "2026-01-13T17:45:58.816614", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 37, "ts": "2026-01-13T17:45:58.960203", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 38, "ts": "2026-01-13T17:45:58.975201", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 39, "ts": "2026-01-13T17:45:59.119931", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 40, "ts": "2026-01-13T17:45:59.135889", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 41, "ts": "2026-01-13T17:45:59.264233", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 42, "ts": "2026-01-13T17:45:59.280336", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 43, "ts": "2026-01-13T17:45:59.423960", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 44, "ts": "2026-01-13T17:45:59.438900", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 45, "ts": "2026-01-13T17:45:59.568225", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 46, "ts": "2026-01-13T17:45:59.581653", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 47, "ts": "2026-01-13T17:45:59.696004", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 48, "ts": "2026-01-13T17:45:59.710886", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 49, "ts": "2026-01-13T17:45:59.840694", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 50, "ts": "2026-01-13T17:45:59.855556", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 51, "ts": "2026-01-13T17:46:00.000690", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 52, "ts": "2026-01-13T17:46:00.015574", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 53, "ts": "2026-01-13T17:46:00.175888", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 54, "ts": "2026-01-13T17:46:00.190988", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 55, "ts": "2026-01-13T17:46:00.336295", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 56, "ts": "2026-01-13T17:46:00.351234", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 57, "ts": "2026-01-13T17:46:00.495872", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 58, "ts": "2026-01-13T17:46:00.510695", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 59, "ts": "2026-01-13T17:46:00.896271", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 60, "ts": "2026-01-13T17:46:00.909603", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 61, "ts": "2026-01-13T17:46:01.183906", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 62, "ts": "2026-01-13T17:46:01.197146", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 63, "ts": "2026-01-13T17:46:01.600127", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 64, "ts": "2026-01-13T17:46:01.616081", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 65, "ts": "2026-01-13T17:46:01.920433", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 66, "ts": "2026-01-13T17:46:01.935459", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 67, "ts": "2026-01-13T17:46:02.288373", "type": "nudge", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"v": 0.05, "seconds": 0.25}}
+{"event_id": 68, "ts": "2026-01-13T17:46:02.303355", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Nudge sent."}}
+{"event_id": 69, "ts": "2026-01-13T17:46:35.342475", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Welcome and thank you for participating. Today, you\u2019ll be interacting with Stretch. You will configure my behavior for the desk, bed, and kitchen. You will guide me to each area and tell me where we are."}}
+{"event_id": 70, "ts": "2026-01-13T17:46:35.356157", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "System ready. Press ENTER to begin, or send {\"type\":\"advance\"} on /study_event."}}
+{"event_id": 71, "ts": "2026-01-13T17:46:52.530204", "type": "arrive", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"room": "desk"}}
+{"event_id": 72, "ts": "2026-01-13T17:46:52.545581", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Arrival at desk received, but I'm not currently walking between stations."}}
+{"event_id": 73, "ts": "2026-01-13T17:47:05.553714", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 74, "ts": "2026-01-13T17:47:05.568327", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 75, "ts": "2026-01-13T17:47:08.738224", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": false}}
+{"event_id": 76, "ts": "2026-01-13T17:47:08.752968", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode off."}}
+{"event_id": 77, "ts": "2026-01-13T17:47:09.009748", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 78, "ts": "2026-01-13T17:47:09.026540", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 79, "ts": "2026-01-13T17:47:09.202082", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": false}}
+{"event_id": 80, "ts": "2026-01-13T17:47:09.215985", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode off."}}
+{"event_id": 81, "ts": "2026-01-13T17:47:09.393994", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 82, "ts": "2026-01-13T17:47:09.396926", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 83, "ts": "2026-01-13T17:47:09.554278", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": false}}
+{"event_id": 84, "ts": "2026-01-13T17:47:09.568891", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode off."}}
+{"event_id": 85, "ts": "2026-01-13T17:47:09.713875", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 86, "ts": "2026-01-13T17:47:09.728650", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 87, "ts": "2026-01-13T17:47:10.034512", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": false}}
+{"event_id": 88, "ts": "2026-01-13T17:47:10.048105", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode off."}}
+{"event_id": 89, "ts": "2026-01-13T17:47:10.370159", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 90, "ts": "2026-01-13T17:47:10.384728", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 91, "ts": "2026-01-13T17:47:11.857968", "type": "advance", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {}}
+{"event_id": 92, "ts": "2026-01-13T17:47:11.872630", "type": "say", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"text": "Hello. I\u2019m Stretch. Thanks for unboxing me. Before we walk around your home, we need to set my general behavior settings. These will be my defaults unless overridden per room."}}
+{"event_id": 93, "ts": "2026-01-13T17:47:16.994461", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"enabled": false}}
+{"event_id": 94, "ts": "2026-01-13T17:47:17.007883", "type": "say", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"text": "Follow mode off."}}
+{"event_id": 95, "ts": "2026-01-13T17:47:17.810522", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 96, "ts": "2026-01-13T17:47:17.825213", "type": "say", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 97, "ts": "2026-01-13T17:47:18.978455", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"enabled": false}}
+{"event_id": 98, "ts": "2026-01-13T17:47:18.993832", "type": "say", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"text": "Follow mode off."}}
+{"event_id": 99, "ts": "2026-01-13T17:47:19.218059", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 100, "ts": "2026-01-13T17:47:19.234320", "type": "say", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 101, "ts": "2026-01-13T17:47:19.522297", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"enabled": false}}
+{"event_id": 102, "ts": "2026-01-13T17:47:19.537983", "type": "say", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"text": "Follow mode off."}}
+{"event_id": 103, "ts": "2026-01-13T17:47:19.730218", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 104, "ts": "2026-01-13T17:47:19.745087", "type": "say", "phase": "INTRO", "step_id": "intro_stretch", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}
+{"event_id": 105, "ts": "2026-01-13T18:02:18.508317", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Welcome and thank you for participating. Today, you\u2019ll be interacting with Stretch. You will configure my behavior for the desk, bed, and kitchen. You will guide me to each area and tell me where we are."}}
+{"event_id": 106, "ts": "2026-01-13T18:02:18.522911", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "System ready. Press ENTER to begin, or send {\"type\":\"advance\"} on /study_event."}}
+{"event_id": 107, "ts": "2026-01-13T18:02:22.500892", "type": "follow_toggle", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"enabled": true}}
+{"event_id": 108, "ts": "2026-01-13T18:02:22.515374", "type": "say", "phase": "INTRO", "step_id": "intro_ra", "profile": "user", "room": "desk", "payload": {"text": "Follow mode on."}}

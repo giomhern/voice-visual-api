@@ -1,0 +1,55 @@
+{
+  "timestamp": "2026-01-15T14:18:21.334905",
+  "phase": "STATION_CONFIG",
+  "step_index": 4,
+  "study": {
+    "active_profile": "user",
+    "current_room": "desk",
+    "demo_confirm": {
+      "desk": null,
+      "bed": null,
+      "kitchen": null
+    },
+    "waiting_for": ""
+  },
+  "profiles": {
+    "user": {
+      "global_defaults": {
+        "movement_speed": "medium",
+        "voice_volume": 60,
+        "voice_profile": "neutral",
+        "explainability": "short",
+        "confirmation": true,
+        "social_distance": "medium"
+      },
+      "rooms": {
+        "desk": {},
+        "bed": {},
+        "kitchen": {}
+      },
+      "rules": {
+        "no_go": [],
+        "time_rules": []
+      }
+    },
+    "jackie": {
+      "global_defaults": {
+        "movement_speed": "medium",
+        "voice_volume": 60,
+        "voice_profile": "neutral",
+        "explainability": "short",
+        "confirmation": true,
+        "social_distance": "medium"
+      },
+      "rooms": {
+        "desk": {},
+        "bed": {},
+        "kitchen": {}
+      },
+      "rules": {
+        "no_go": [],
+        "time_rules": []
+      }
+    }
+  }
+}

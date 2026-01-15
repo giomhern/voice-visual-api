@@ -1,235 +1,307 @@
-# app.py
+#!/usr/bin/env python3
+"""
+Flask API for Stretch
+- Audio / TTS / Gemini intent parsing
+- Direct robot control (RobotManager)
+- Study control via ROS event publishing (/study_event)
+
+IMPORTANT:
+  - Flask never modifies study state directly
+  - Study FSM lives in stretch_study_controller.py
+"""
+
+import json
+import os
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
+# ---- Audio / Robot / LLM ----
 from audio import set_volume, say_text, list_voices
 from robot_control import RobotManager
 from gemini import transcribe_audio, parse_intent
+
+# ---- ROS event bridge ----
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+
+# =========================================================
+# ROS → Study Event Publisher
+# =========================================================
+
+class StudyEventPublisher(Node):
+    def __init__(self):
+        super().__init__("study_event_publisher")
+        self.pub = self.create_publisher(String, "study_event", 10)
+
+    def send(self, event: dict):
+        msg = String()
+        msg.data = json.dumps(event)
+        self.pub.publish(msg)
+
+
+# Initialize ROS once (no spinning required)
+rclpy.init(args=None)
+ros_node = StudyEventPublisher()
+
+
+# =========================================================
+# Flask app setup
+# =========================================================
 
 app = Flask(__name__)
 CORS(app)
 
 robot = RobotManager()
 
+
+# =========================================================
+# Health
+# =========================================================
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"}), 200
+
+
+# =========================================================
+# Audio / TTS
+# =========================================================
 
 @app.route("/settings/volume", methods=["POST"])
 def api_set_volume():
     data = request.get_json(silent=True) or {}
     level = data.get("level")
-    if level is None:
-        return jsonify({"error": "Missing 'level' (0-100)."}), 400
+
     try:
         level = int(level)
-        if not (0 <= level <= 100):
-            raise ValueError
+        assert 0 <= level <= 100
     except Exception:
-        return jsonify({"error": "Volume 'level' must be an integer 0-100."}), 400
+        return jsonify({"ok": False, "error": "Volume must be integer 0–100"}), 400
 
     ok, msg, meta = set_volume(level)
-    return (jsonify({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}), 200 if ok else 500)
+    return jsonify({"ok": ok, "message": msg, "meta": meta}), (200 if ok else 500)
+
 
 @app.route("/tts/say", methods=["POST"])
 def api_tts_say():
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
     if not text:
-        return jsonify({"error": "Missing or empty 'text'."}), 400
+        return jsonify({"ok": False, "error": "Missing 'text'"}), 400
 
-    rate = data.get("rate")          # int-like (words/min for pyttsx3, -s for espeak)
-    voice = data.get("voice")        # substring to match
-    local_gain = data.get("volume")  # 0.0-1.0 for pyttsx3 only
+    ok, msg, meta = say_text(
+        text=text,
+        rate=data.get("rate"),
+        voice=data.get("voice"),
+        local_gain=data.get("volume"),
+    )
+    return jsonify({"ok": ok, "message": msg, "meta": meta}), (200 if ok else 500)
 
-    ok, msg, meta = say_text(text=text, rate=rate, voice=voice, local_gain=local_gain)
-    return (jsonify({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}), 200 if ok else 500)
 
 @app.route("/tts/voices", methods=["GET"])
 def api_voices():
     return jsonify(list_voices()), 200
 
 
+# =========================================================
+# Robot lifecycle + motion (direct control)
+# =========================================================
+
 @app.route("/robot/start", methods=["POST"])
 def robot_start():
     ok, msg, meta = robot.startup()
-    return ({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}, 200 if ok else 500)
+    return jsonify({"ok": ok, "message": msg, "meta": meta}), (200 if ok else 500)
+
 
 @app.route("/robot/stop", methods=["POST"])
 def robot_stop():
     ok, msg, meta = robot.shutdown()
-    return ({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}, 200 if ok else 500)
+    return jsonify({"ok": ok, "message": msg, "meta": meta}), (200 if ok else 500)
 
-# Optional (motion): uncomment home() in RobotManager first
+
 @app.route("/robot/home", methods=["POST"])
 def robot_home():
     ok, msg, meta = robot.home()
-    return ({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}, 200 if ok else 500)
+    return jsonify({"ok": ok, "message": msg, "meta": meta}), (200 if ok else 500)
+
 
 @app.route("/robot/diagnostics", methods=["GET"])
 def robot_diag():
     return jsonify(robot.diagnostics()), 200
 
 
-@app.route("/voice/command", methods=["POST"])
-def voice_command():
-    """
-    Accepts either:
-      - JSON: {"text": "..."}  OR
-      - multipart/form-data with file field "audio" and optional "mime_type"
-
-    Pipeline:
-      audio -> Gemini transcription -> intent parse -> execute -> speak confirmation
-      text  -> intent parse -> execute -> speak confirmation
-    """
-    # 1) Get text or audio
-    if request.content_type and request.content_type.startswith("multipart/form-data"):
-        # Audio path
-        file = request.files.get("audio")
-        mime_type = request.form.get("mime_type", "audio/wav")
-        if not file:
-            return jsonify({"ok": False, "error": "No 'audio' file uploaded."}), 400
-        audio_bytes = file.read()
-        ok_t, transcript, meta_t = transcribe_audio(audio_bytes, mime_type)
-        if not ok_t:
-            return jsonify({"ok": False, "error": transcript, "stage": "transcription"}), 500
-        user_text = transcript
-    else:
-        # JSON path
-        data = request.get_json(silent=True) or {}
-        user_text = (data.get("text") or "").strip()
-        if not user_text:
-            return jsonify({"ok": False, "error": "Provide 'text' or upload 'audio'."}), 400
-
-    # 2) Parse intent with Gemini
-    ok_p, intent, meta_p = parse_intent(user_text)
-    if not ok_p:
-        say_text(f"Sorry, I couldn't understand that.")
-        return jsonify({"ok": False, "error": intent.get("error", "parse failed"), "transcript": user_text}), 400
-
-    action = intent.get("action")
-    params = intent.get("params", {})
-
-    # 3) Execute intent
-    #    (you can expand this mapping over time)
-    if action == "set_volume":
-        level = params.get("level")
-        try:
-            level = int(level)
-        except Exception:
-            say_text("I couldn't read the volume level.")
-            return jsonify({"ok": False, "error": "Invalid volume level", "intent": intent}), 400
-        if not (0 <= level <= 100):
-            say_text("Volume must be between zero and one hundred.")
-            return jsonify({"ok": False, "error": "Level out of range", "intent": intent}), 400
-        ok, msg, meta = set_volume(level)
-        if ok:
-            say_text(f"Okay. Volume set to {level} percent.")
-            return jsonify({"ok": True, "action": action, "message": msg, "params": {"level": level}}), 200
-        else:
-            say_text("Sorry, I could not change the volume.")
-            return jsonify({"ok": False, "action": action, "error": msg}), 500
-
-    elif action == "speak":
-        text = (params.get("text") or "").strip()
-        if not text:
-            say_text("I didn't catch what to say.")
-            return jsonify({"ok": False, "error": "Missing text for speak", "intent": intent}), 400
-        ok, msg, meta = say_text(text)
-        return jsonify({"ok": ok, "action": action, "message": msg, "spoken": text}), (200 if ok else 500)
-
-    elif action == "robot_start":
-        ok, msg, meta = robot.startup()
-        if ok:
-            say_text("Robot started.")
-        else:
-            say_text("Sorry, I couldn't start the robot.")
-        return jsonify({"ok": ok, "action": action, "message": msg, "meta": meta}), (200 if ok else 500)
-
-    elif action == "robot_stop":
-        ok, msg, meta = robot.shutdown()
-        if ok:
-            say_text("Robot stopped.")
-        else:
-            say_text("Sorry, I couldn't stop the robot.")
-        return jsonify({"ok": ok, "action": action, "message": msg, "meta": meta}), (200 if ok else 500)
-
-    else:
-        say_text("Sorry, that command isn't supported yet.")
-        return jsonify({"ok": False, "error": f"Unknown action '{action}'", "intent": intent}), 400
-
-@app.route("/models", methods=["GET"])
-def models():
-    import google.generativeai as genai, os
-    try:
-        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-        data = []
-        for m in genai.list_models():
-            data.append({
-                "name": m.name,
-                "id": m.name.split("/")[-1],
-                "methods": getattr(m, "supported_generation_methods", []),
-            })
-        return jsonify({"ok": True, "models": data}), 200
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-# app.py
-@app.route("/intent/debug", methods=["POST"])
-def intent_debug():
-    data = request.get_json(silent=True) or {}
-    text = (data.get("text") or "").strip()
-    if not text:
-        return jsonify({"ok": False, "error": "Missing text"}), 400
-    from gemini import parse_intent
-    ok, intent, meta = parse_intent(text)
-    # include meta.raw if present to inspect
-    return jsonify({"ok": ok, "intent": intent, "meta": meta}), 200 if ok else 500
-
-
-# Move forward/backward by distance (meters)
 @app.route("/robot/move", methods=["POST"])
 def robot_move():
     data = request.get_json(silent=True) or {}
-    distance_m = data.get("distance_m", None)
-    velocity_mps = data.get("velocity_mps", 0.10)  # optional
+    distance = data.get("distance_m")
+    velocity = data.get("velocity_mps", 0.10)
 
-    if distance_m is None:
-        return jsonify({"ok": False, "error": "Missing distance_m (meters). Positive=forward, negative=backward."}), 400
+    if distance is None:
+        return jsonify({"ok": False, "error": "Missing distance_m"}), 400
 
-    ok, msg, meta = robot.move_linear(distance_m=distance_m, velocity_mps=velocity_mps)
+    ok, msg, meta = robot.move_linear(distance_m=distance, velocity_mps=velocity)
     if ok:
-        # optional audible confirmation
         try:
-            say_text(f"Moving {abs(float(distance_m)):.2f} meters {'forward' if float(distance_m) >= 0 else 'backward'}.")
+            say_text(f"Moving {abs(float(distance)):.2f} meters.")
         except Exception:
             pass
-    return jsonify({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}), (200 if ok else 500)
+    return jsonify({"ok": ok, "message": msg, "meta": meta}), (200 if ok else 500)
 
 
-# (Optional) emergency halt
+@app.route("/robot/rotate", methods=["POST"])
+def robot_rotate():
+    data = request.get_json(silent=True) or {}
+    angle = data.get("angle_rad")
+    rate = data.get("angular_rate_rps", 0.5)
+
+    if angle is None:
+        return jsonify({"ok": False, "error": "Missing angle_rad"}), 400
+
+    ok, msg, meta = robot.move_angular(angle, rate)
+    if ok:
+        try:
+            say_text(f"Rotating {abs(float(angle)):.2f} radians.")
+        except Exception:
+            pass
+    return jsonify({"ok": ok, "message": msg, "meta": meta}), (200 if ok else 500)
+
+
 @app.route("/robot/halt", methods=["POST"])
 def robot_halt():
     if not hasattr(robot, "halt_motion"):
         return jsonify({"ok": False, "error": "halt_motion not implemented"}), 501
     ok, msg, meta = robot.halt_motion()
-    return jsonify({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}), (200 if ok else 500)
+    return jsonify({"ok": ok, "message": msg, "meta": meta}), (200 if ok else 500)
 
-@app.route("/robot/rotate", methods=["POST"])
-def robot_rotate():
+
+# =========================================================
+# Study control API (publishes ROS events)
+# =========================================================
+
+@app.route("/study/advance", methods=["POST"])
+def study_advance():
+    ros_node.send({"type": "advance"})
+    return jsonify({"ok": True})
+
+
+@app.route("/study/arrive", methods=["POST"])
+def study_arrive():
     data = request.get_json(silent=True) or {}
-    angle_rad = data.get("angle_rad")
-    rate = data.get("angular_rate_rps", 0.5)
-    if angle_rad is None:
-        return jsonify({"ok": False, "error": "Missing angle_rad (radians). Positive=CCW, negative=CW."}), 400
-    ok, msg, meta = robot.move_angular(angle_rad, rate)
-    if ok:
-        try:
-            say_text(f"Rotating {abs(float(angle_rad)):.2f} radians.")
-        except Exception:
-            pass
-    return jsonify({"ok": ok, "message": msg, **({"meta": meta} if meta else {})}), (200 if ok else 500)
+    room = data.get("room")
+    if room not in ("desk", "bed", "kitchen"):
+        return jsonify({"ok": False, "error": "Invalid room"}), 400
 
+    ros_node.send({"type": "arrive", "room": room})
+    return jsonify({"ok": True})
+
+
+@app.route("/study/set", methods=["POST"])
+def study_set():
+    data = request.get_json(silent=True) or {}
+    required = {"scope", "key", "value"}
+    if not required.issubset(data):
+        return jsonify({"ok": False, "error": "Missing fields"}), 400
+
+    event = {
+        "type": "set",
+        "scope": data["scope"],
+        "key": data["key"],
+        "value": data["value"],
+    }
+    if data["scope"] == "room":
+        event["room"] = data.get("room")
+
+    ros_node.send(event)
+    return jsonify({"ok": True})
+
+
+@app.route("/study/demo", methods=["POST"])
+def study_demo():
+    data = request.get_json(silent=True) or {}
+    ros_node.send({
+        "type": "demo_confirm",
+        "room": data.get("room"),
+        "yes": bool(data.get("yes", False)),
+    })
+    return jsonify({"ok": True})
+
+
+# =========================================================
+# Voice command → intent → action / study event
+# =========================================================
+
+@app.route("/voice/command", methods=["POST"])
+def voice_command():
+    # --- get text or audio ---
+    if request.content_type and request.content_type.startswith("multipart/form-data"):
+        file = request.files.get("audio")
+        if not file:
+            return jsonify({"ok": False, "error": "Missing audio"}), 400
+        audio_bytes = file.read()
+        ok, transcript, _ = transcribe_audio(audio_bytes, "audio/wav")
+        if not ok:
+            return jsonify({"ok": False, "error": transcript}), 500
+        text = transcript
+    else:
+        data = request.get_json(silent=True) or {}
+        text = (data.get("text") or "").strip()
+        if not text:
+            return jsonify({"ok": False, "error": "Missing text"}), 400
+
+    # --- parse intent ---
+    ok, intent, meta = parse_intent(text)
+    if not ok:
+        say_text("Sorry, I didn't understand.")
+        return jsonify({"ok": False, "intent": intent}), 400
+
+    action = intent.get("action")
+    params = intent.get("params", {})
+
+    # --- study-related intents ---
+    if action == "study_advance":
+        ros_node.send({"type": "advance"})
+        say_text("Okay, let's continue.")
+        return jsonify({"ok": True})
+
+    if action == "study_arrive":
+        ros_node.send({"type": "arrive", "room": params.get("room")})
+        say_text(f"We are now at the {params.get('room')}.")
+        return jsonify({"ok": True})
+
+    if action == "study_set":
+        ros_node.send({"type": "set", **params})
+        say_text("Okay, I've updated that.")
+        return jsonify({"ok": True})
+
+    # --- fallback to existing actions ---
+    say_text("Sorry, that command isn't supported yet.")
+    return jsonify({"ok": False, "intent": intent}), 400
+
+
+# =========================================================
+# Debug helpers
+# =========================================================
+
+@app.route("/intent/debug", methods=["POST"])
+def intent_debug():
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "")
+    ok, intent, meta = parse_intent(text)
+    return jsonify({"ok": ok, "intent": intent, "meta": meta}), (200 if ok else 500)
+
+
+# =========================================================
+# Main
+# =========================================================
 
 if __name__ == "__main__":
-    # run single-process, single-thread, no reloader
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False, threaded=False)
+    app.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False,
+        use_reloader=False,
+        threaded=False,
+    )
