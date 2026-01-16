@@ -1,8 +1,8 @@
-from __future__ import annotations
-
+import threading
 import time
 
 from stretch_study.capabilities.base_motion import BaseMotion
+from stretch_study.capabilities.arm_commander import ArmCommander
 
 
 class DeterministicDemos:
@@ -12,9 +12,51 @@ class DeterministicDemos:
         self.distances = distances
         self.motion = BaseMotion(node, cmd_vel_topic, odom_topic)
 
-    # -----------------------------
-    # Transit between corners
-    # -----------------------------
+        # Serialize arm demos so you don't stack goals
+        self._arm_lock = threading.Lock()
+
+        # Parameters (you can later make these ROS params)
+        self.trajectory_action = "/stretch_controller/follow_joint_trajectory"  # override if different
+        self.joint_states_topic = "/joint_states"
+
+        self.arm = ArmCommander(node, action_name=self.trajectory_action, joint_states_topic=self.joint_states_topic)
+        self.arm_ready = self.arm.wait_ready(timeout_s=5.0)
+
+        # Joint set used in the doc snippet
+        self.demo_joints = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
+
+        # --- Deterministic demo "poses" (TUNE THESE NUMBERS) ---
+        self.pose_stow = [0.20, 0.00, 3.14]
+
+        # Desk wipe (gesture, no contact)
+        self.pose_desk_ready = [0.50, 0.10, 0.00]
+        self.pose_wipe_left  = [0.50, 0.18, +0.60]
+        self.pose_wipe_right = [0.50, 0.18, -0.60]
+
+        # Bed “pillow” gesture
+        self.pose_bed_ready = [0.75, 0.10, 0.00]
+        self.pose_pillow_center = [0.75, 0.20, 0.00]
+        self.pose_pillow_top    = [0.85, 0.20, 0.00]
+
+        # Kitchen snack “present”
+        self.pose_kitchen_ready = [0.55, 0.10, 0.00]
+        self.pose_present_snack = [0.55, 0.25, 0.00]
+
+    def _wait_for_base_idle(self, timeout_s: float = 10.0) -> bool:
+        if hasattr(self.motion, "is_busy") and self.motion.is_busy():
+            self.node.get_logger().info("[DEMO] waiting for base motion to finish...")
+            ok = self.motion.wait_until_idle(timeout_s=timeout_s)
+            if not ok:
+                self.node.get_logger().warn("[DEMO] base still moving; skipping demo.")
+            return ok
+        return True
+
+    def _arm_pose(self, pose, duration_s=2.0):
+        if not self.arm_ready:
+            self.node.get_logger().error("[ARM] ArmCommander not ready (action server or joint_states missing).")
+            return False
+        return self.arm.send_pose(self.demo_joints, pose, duration_s=duration_s, wait=True)
+    
     def transit(self, from_loc: str, to_loc: str):
         if not self.motion_enabled:
             self.node.get_logger().info("[MOTION] transit skipped (motion disabled)")
@@ -62,9 +104,7 @@ class DeterministicDemos:
             self.node.get_logger().warn("[DEMO] base motion still busy; skipping demo for safety.")
         return ok
 
-    # -----------------------------
-    # Demos (deterministic placeholders)
-    # -----------------------------
+
     def desk_demo(self, thoroughness: str):
         if not self._wait_for_base_idle():
             return
@@ -72,9 +112,17 @@ class DeterministicDemos:
         passes = {"once": 1, "twice": 2, "thorough": 3, "none": 0}.get(thoroughness, 0)
         self.node.get_logger().info(f"[DEMO] Desk demo start (thoroughness={thoroughness}, passes={passes})")
 
-        for i in range(passes):
-            self.node.get_logger().info(f"[DEMO] Desk wipe pass {i+1}/{passes}")
-            time.sleep(1.0)
+        if passes == 0:
+            self.node.get_logger().info("[DEMO] Desk demo skipped (none).")
+            return
+
+        with self._arm_lock:
+            self._arm_pose(self.pose_desk_ready, duration_s=2.0)
+            for i in range(passes):
+                self.node.get_logger().info(f"[DEMO] Wipe pass {i+1}/{passes}")
+                self._arm_pose(self.pose_wipe_left, duration_s=1.0)
+                self._arm_pose(self.pose_wipe_right, duration_s=1.0)
+            self._arm_pose(self.pose_stow, duration_s=2.5)
 
         self.node.get_logger().info("[DEMO] Desk demo complete")
 
@@ -82,8 +130,15 @@ class DeterministicDemos:
         if not self._wait_for_base_idle():
             return
 
+        target = self.pose_pillow_top if arrangement == "top" else self.pose_pillow_center
         self.node.get_logger().info(f"[DEMO] Bed demo start (arrangement={arrangement})")
-        time.sleep(2.0)
+
+        with self._arm_lock:
+            self._arm_pose(self.pose_bed_ready, duration_s=2.0)
+            self._arm_pose(target, duration_s=2.0)
+            time.sleep(0.5)
+            self._arm_pose(self.pose_stow, duration_s=2.5)
+
         self.node.get_logger().info("[DEMO] Bed demo complete")
 
     def kitchen_demo(self, snack: str):
@@ -91,5 +146,11 @@ class DeterministicDemos:
             return
 
         self.node.get_logger().info(f"[DEMO] Kitchen demo start (snack={snack})")
-        time.sleep(2.0)
+
+        with self._arm_lock:
+            self._arm_pose(self.pose_kitchen_ready, duration_s=2.0)
+            self._arm_pose(self.pose_present_snack, duration_s=2.0)
+            time.sleep(0.5)
+            self._arm_pose(self.pose_stow, duration_s=2.5)
+
         self.node.get_logger().info("[DEMO] Kitchen demo complete")
