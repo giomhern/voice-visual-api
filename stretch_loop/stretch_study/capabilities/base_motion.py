@@ -54,6 +54,9 @@ class BaseMotion:
         # Serialize motion commands
         self._motion_lock = threading.Lock()
 
+        self._busy = threading.Event()
+        self._busy.clear()
+
     def _on_odom(self, msg: Odometry):
         with self._lock:
             self._x = msg.pose.pose.position.x
@@ -84,11 +87,24 @@ class BaseMotion:
 
     def _run_exclusive(self, fn: Callable[[], None]) -> None:
         with self._motion_lock:
+            self._busy.set()
             try:
                 fn()
             finally:
-                # Always stop at the end (safety)
                 self.stop()
+                self._busy.clear()
+
+
+    def is_busy(self) -> bool:
+        return self._busy.is_set()
+
+    def wait_until_idle(self, timeout_s: float = 10.0) -> bool:
+        start = time.time()
+        while time.time() - start < timeout_s:
+            if not self.is_busy():
+                return True
+            time.sleep(0.05)
+        return not self.is_busy()
 
     # -----------------------------
     # Blocking primitives (used only inside _run_exclusive)
