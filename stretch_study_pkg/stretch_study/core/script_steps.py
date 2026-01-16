@@ -405,3 +405,16 @@ class ScriptContext:
         if ev.type == 'advance':
             return True
         return False
+
+
+def build_script():
+    return [
+        {"id": "intro", "prompt": "Hello. Let's begin.", "expect": None},
+        {"id": "desk_arrive", "prompt": "Tell me when we are at the desk.", "expect": "arrive"},
+        {"id": "desk_demo", "prompt": "Would you like a desk demo?", "expect": "demo"},
+        {"id": "bed_arrive", "prompt": "Tell me when we are at the bed.", "expect": "arrive"},
+        {"id": "bed_demo", "prompt": "Would you like a bed demo?", "expect": "demo"},
+        {"id": "kitchen_arrive", "prompt": "Tell me when we are in the kitchen.", "expect": "arrive"},
+        {"id": "kitchen_demo", "prompt": "Would you like a kitchen demo?", "expect": "demo"},
+        {"id": "end", "prompt": "Thank you. The study is complete.", "expect": None},
+    ]

@@ -8,8 +8,8 @@ stretch_study_engine:
       output_dir: "~/.ros/stretch_study"
 
     io:
-      event_topic: "/study_event"     # std_msgs/String (JSON)
-      prompt_topic: "/study_prompt"   # std_msgs/String (JSON)
+      event_topic: "/study_event" # std_msgs/String (JSON)
+      prompt_topic: "/study_prompt" # std_msgs/String (JSON)
 
     # Optional deterministic base movement (odom-based) for controlled demo testing.
     # Enable only when the space is clear and you want the robot to physically move.
@@ -18,25 +18,25 @@ stretch_study_engine:
       cmd_vel_topic: "/stretch/cmd_vel"
       odom_topic: "/odom"
       distances_m:
-        door_to_desk: 0.0
-        desk_to_bed: 0.0
-        bed_to_kitchen: 0.0
+        door_to_desk: 0.05
+        desk_to_bed: 0.05
+        bed_to_kitchen: 0.05
 
     behavior_defaults:
-      movement_speed: "medium"       # slow | medium | fast
-      voice_volume: 60                # 0-100
-      voice_profile: "neutral"       # neutral | friendly | playful
-      explainability: "short"        # none | short | full
-      confirmation: "confirm"        # confirm | silent
-      social_distance: "medium"      # close | medium | far
+      movement_speed: "medium" # slow | medium | fast
+      voice_volume: 60 # 0-100
+      voice_profile: "neutral" # neutral | friendly | playful
+      explainability: "short" # none | short | full
+      confirmation: "confirm" # confirm | silent
+      social_distance: "medium" # close | medium | far
 
     rooms:
       desk:
-        cleaning_thoroughness: "once"     # once | twice | thorough | none
+        cleaning_thoroughness: "once" # once | twice | thorough | none
       bed:
-        pillow_arrangement: "center"      # center | top
+        pillow_arrangement: "center" # center | top
       kitchen:
-        snack_preference: "doritos"       # doritos | cheetos
+        snack_preference: "doritos" # doritos | cheetos
 
     round2_constraints:
       # Optional constraints you can enforce in software for Jackie.
