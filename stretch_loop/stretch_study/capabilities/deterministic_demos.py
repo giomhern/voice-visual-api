@@ -23,7 +23,7 @@ class DeterministicDemos:
         self.arm_ready = self.arm.wait_ready(timeout_s=5.0)
 
         # Joint set used in the doc snippet
-        self.demo_joints = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
+        self.desk_joints = ["joint_lift", "wrist_extension", "joint_wrist_pitch", "joint_wrist_yaw"]
 
         # --- Deterministic demo "poses" (TUNE THESE NUMBERS) ---
         self.pose_stow = [0.20, 0.00, 3.14]
@@ -115,16 +115,59 @@ class DeterministicDemos:
             self.node.get_logger().info("[DEMO] Desk demo skipped (none).")
             return
 
+        if not self.arm_ready:
+            self.node.get_logger().error("[DEMO] Arm not ready; cannot run desk demo.")
+            return
+
+        # --- Desk-specific joints (add pitch for realism) ---
+        desk_joints = ["joint_lift", "wrist_extension", "joint_wrist_pitch", "joint_wrist_yaw"]
+
+        # --- Poses (TUNE) ---
+        stow =        [0.20, 0.00,  0.00,  0.00]
+        ready =       [0.55, 0.12, -0.20,  0.00]   # slight pitch down
+        contactish =  [0.55, 0.18, -0.85,  0.00]   # wipe pitch
+        yaw_left =    +0.75
+        yaw_right =   -0.75
+
+        # Micro-staging motion (optional but makes it feel intentional)
+        # Small forward nudge, then stop (uses your serialized motion worker)
+        def stage_seq():
+            self.node.get_logger().info("[DEMO] staging base position for desk demo")
+            self.motion.drive_distance(0.05, timeout_s=2.0)  # 5cm
+        self.motion.run_sequence_async(stage_seq)
+        self.motion.wait_until_idle(timeout_s=3.0)
+
         with self._arm_lock:
-            self._arm_pose(self.pose_desk_ready, duration_s=2.0)
-            for i in range(passes):
-                self.node.get_logger().info(f"[DEMO] Wipe pass {i+1}/{passes}")
-                self._arm_pose(self.pose_wipe_left, duration_s=1.0)
-                self._arm_pose(self.pose_wipe_right, duration_s=1.0)
-            self._arm_pose(self.pose_stow, duration_s=2.5)
+            # Move to ready
+            self.arm.send_pose(desk_joints, ready, duration_s=2.0, wait=True)
+
+            for p in range(passes):
+                self.node.get_logger().info(f"[DEMO] wipe routine {p+1}/{passes}")
+
+                # Build smooth wipe trajectory (time_from_start in seconds)
+                # ready -> pitch down -> sweep L/R a few times -> back center
+                points = []
+                t = 1.0
+                points.append((contactish, t))  # pitch down
+
+                # 3 full sweeps per pass (tune)
+                sweeps = 3
+                for i in range(sweeps):
+                    t += 0.8
+                    points.append(([contactish[0], contactish[1], contactish[2], yaw_left], t))
+                    t += 0.8
+                    points.append(([contactish[0], contactish[1], contactish[2], yaw_right], t))
+
+                # Return yaw center + slight lift up
+                t += 0.8
+                points.append(([ready[0], ready[1], ready[2], 0.0], t))
+
+                self.arm.send_trajectory(desk_joints, points, wait=True)
+
+            # Return to stow
+            self.arm.send_pose(desk_joints, stow, duration_s=2.5, wait=True)
 
         self.node.get_logger().info("[DEMO] Desk demo complete")
-
 
     def bed_demo(self, arrangement: str):
         if not self._wait_for_base_idle():

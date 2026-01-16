@@ -116,3 +116,54 @@ class ArmCommander:
 
         self.node.get_logger().info("[ARM] Goal complete.")
         return True
+    
+    def send_trajectory(
+    self,
+    joint_names: Sequence[str],
+    points: Sequence[tuple[Sequence[float], float]],
+    wait: bool = True,
+) -> bool:
+        """
+        points: list of (positions, time_from_start_sec)
+        """
+        cur = self._current_positions(joint_names)
+        if cur is None:
+            return False
+
+        traj_points = []
+
+        # start at current
+        p0 = JointTrajectoryPoint()
+        p0.time_from_start = Duration(seconds=0.0).to_msg()
+        p0.positions = list(cur)
+        traj_points.append(p0)
+
+        for pos, tsec in points:
+            p = JointTrajectoryPoint()
+            p.time_from_start = Duration(seconds=float(tsec)).to_msg()
+            p.positions = list(pos)
+            traj_points.append(p)
+
+        goal = FollowJointTrajectory.Goal()
+        goal.trajectory.joint_names = list(joint_names)
+        goal.trajectory.points = traj_points
+
+        future = self._client.send_goal_async(goal)
+        if not wait:
+            return True
+
+        rclpy.spin_until_future_complete(self.node, future, timeout_sec=5.0)
+        goal_handle = future.result()
+        if goal_handle is None or not goal_handle.accepted:
+            self.node.get_logger().error("[ARM] Trajectory goal rejected.")
+            return False
+
+        result_future = goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self.node, result_future, timeout_sec=max(5.0, points[-1][1] + 3.0))
+        res = result_future.result()
+        if res is None:
+            self.node.get_logger().warn("[ARM] Trajectory result timeout.")
+            return False
+
+        self.node.get_logger().info("[ARM] Trajectory complete.")
+        return True
