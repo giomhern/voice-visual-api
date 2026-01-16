@@ -12,39 +12,20 @@ class DeterministicDemos:
         if not self.motion_enabled:
             return
 
-        if from_loc == "door" and to_loc == "desk":
-            self.motion.drive_distance_async(
-                self.distances["door_to_desk"]
-            )
+        def seq():
+            # door -> desk: straight
+            if from_loc == "door" and to_loc == "desk":
+                self.motion.drive_distance(self.distances["door_to_desk"])
 
-        elif from_loc == "desk" and to_loc == "bed":
-            self.motion.turn_left_90_async()
-            time.sleep(1.0)
-            self.motion.drive_distance_async(
-                self.distances["desk_to_bed"]
-            )
+            # desk -> bed: turn left 90, then straight
+            elif from_loc == "desk" and to_loc == "bed":
+                self.motion.turn_left_90()
+                self.motion.drive_distance(self.distances["desk_to_bed"])
 
-        elif from_loc == "bed" and to_loc == "kitchen":
-            self.motion.turn_left_90_async()
-            time.sleep(1.0)
-            self.motion.drive_distance_async(
-                self.distances["bed_to_kitchen"]
-            )
+            # bed -> kitchen: turn left 90, then straight
+            elif from_loc == "bed" and to_loc == "kitchen":
+                self.motion.turn_left_90()
+                self.motion.drive_distance(self.distances["bed_to_kitchen"])
 
-    def desk_demo(self, thoroughness: str):
-        passes = {"once": 1, "twice": 2, "thorough": 3}.get(thoroughness, 0)
-        print("[DEMO] Desk demo start")
-        for i in range(passes):
-            print(f"[DEMO] Wipe pass {i+1}")
-            time.sleep(1.0)
-        print("[DEMO] Desk demo complete")
-
-    def bed_demo(self, arrangement: str):
-        print(f"[DEMO] Bed demo start – pillow to {arrangement}")
-        time.sleep(2.0)
-        print("[DEMO] Bed demo complete")
-
-    def kitchen_demo(self, snack: str):
-        print(f"[DEMO] Kitchen demo start – presenting {snack}")
-        time.sleep(2.0)
-        print("[DEMO] Kitchen demo complete")
+        # Run sequentially in ONE exclusive motion worker
+        self.motion.run_sequence_async(seq)

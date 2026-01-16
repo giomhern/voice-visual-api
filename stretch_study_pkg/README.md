@@ -74,3 +74,13 @@ Replace the gesture demo bodies in:
 - `stretch_study/capabilities/deterministic_demos.py`
 
 with calls into your Stretch ROS 2 stack (arm trajectories, base motions, etc.).
+
+```
+ros2 run stretch_study study_engine --ros-args \
+  -p motion.enable_transit:=true \
+  -p motion.cmd_vel_topic:=/stretch/cmd_vel \
+  -p motion.odom_topic:=/odom \
+  -p motion.distances_m.door_to_desk:=0.20 \
+  -p motion.distances_m.desk_to_bed:=0.20 \
+  -p motion.distances_m.bed_to_kitchen:=0.20
+```
