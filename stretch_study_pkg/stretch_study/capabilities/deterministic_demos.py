@@ -23,7 +23,7 @@ class DeterministicDemos:
         self.arm_ready = self.arm.wait_ready(timeout_s=5.0)
 
         # Joint set used in the doc snippet
-        self.demo_joints = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
+        self.demo_joints = ["joint_lift", "joint_arm", "joint_wrist_yaw"]]
 
         # --- Deterministic demo "poses" (TUNE THESE NUMBERS) ---
         self.pose_stow = [0.20, 0.00, 3.14]
