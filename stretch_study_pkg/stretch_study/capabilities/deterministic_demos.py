@@ -104,7 +104,6 @@ class DeterministicDemos:
             self.node.get_logger().warn("[DEMO] base motion still busy; skipping demo for safety.")
         return ok
 
-
     def desk_demo(self, thoroughness: str):
         if not self._wait_for_base_idle():
             return
@@ -126,6 +125,7 @@ class DeterministicDemos:
 
         self.node.get_logger().info("[DEMO] Desk demo complete")
 
+
     def bed_demo(self, arrangement: str):
         if not self._wait_for_base_idle():
             return
@@ -140,6 +140,7 @@ class DeterministicDemos:
             self._arm_pose(self.pose_stow, duration_s=2.5)
 
         self.node.get_logger().info("[DEMO] Bed demo complete")
+
 
     def kitchen_demo(self, snack: str):
         if not self._wait_for_base_idle():
