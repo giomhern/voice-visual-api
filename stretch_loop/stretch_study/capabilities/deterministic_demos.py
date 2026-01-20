@@ -133,17 +133,17 @@ class DeterministicDemos:
         left = straight_yaw + yaw_span
         right = straight_yaw - yaw_span
 
-        # Optional micro-stage: tiny base nudge forward for intentionality
-        def stage_seq():
-            self.node.get_logger().info("[DEMO] staging base position for desk demo (5cm)")
-            self.motion.drive_distance(0.05, timeout_s=2.0)
+        # # Optional micro-stage: tiny base nudge forward for intentionality
+        # def stage_seq():
+        #     self.node.get_logger().info("[DEMO] staging base position for desk demo (5cm)")
+        #     self.motion.drive_distance(0.05, timeout_s=2.0)
 
-        # Run staging (serialized) then wait briefly for completion
-        self.motion.run_sequence_async(stage_seq)
-        if hasattr(self.motion, "wait_until_idle"):
-            self.motion.wait_until_idle(timeout_s=3.0)
-        else:
-            time.sleep(1.0)
+        # # Run staging (serialized) then wait briefly for completion
+        # self.motion.run_sequence_async(stage_seq)
+        # if hasattr(self.motion, "wait_until_idle"):
+        #     self.motion.wait_until_idle(timeout_s=3.0)
+        # else:
+        #     time.sleep(1.0)
 
         with self._arm_lock:
             self.node.get_logger().info("[DEMO] Phase 1: lift high + align yaw straight")
