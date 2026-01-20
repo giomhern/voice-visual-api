@@ -1,0 +1,16 @@
+# This file maps locations for which the robot should move to based on the FUNMAP pose coordinates. The below are placeholder for now!
+
+frame_id: map
+goals:
+  desk:
+    x: 1.23
+    y: -0.45
+    yaw: 1.57
+  bed:
+    x: 0.10
+    y: 2.05
+    yaw: 3.14
+  kitchen:
+    x: -1.50
+    y: 0.70
+    yaw: -1.57
