@@ -19,44 +19,33 @@ class DeterministicDemos:
         self.trajectory_action = "/stretch_controller/follow_joint_trajectory"  # override if different
         self.joint_states_topic = "/stretch/joint_states"
 
-        self.arm = ArmCommander(node, action_name=self.trajectory_action, joint_states_topic=self.joint_states_topic)
+        self.arm = ArmCommander(
+            node,
+            action_name=self.trajectory_action,
+            joint_states_topic=self.joint_states_topic,
+        )
         self.arm_ready = self.arm.wait_ready(timeout_s=5.0)
 
-        # Joint set used in the doc snippet
+        # Joint set for desk demo (lift + extension + pitch + yaw)
         self.desk_joints = ["joint_lift", "wrist_extension", "joint_wrist_pitch", "joint_wrist_yaw"]
 
-        # --- Deterministic demo "poses" (TUNE THESE NUMBERS) ---
-        self.pose_stow = [0.20, 0.00, 3.14]
+        # Joint sets for simpler demos (lift + extension + yaw)
+        self.simple_joints = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
 
-        # Desk wipe (gesture, no contact)
-        self.pose_desk_ready = [0.50, 0.10, 0.00]
-        self.pose_wipe_left  = [0.50, 0.18, +0.60]
-        self.pose_wipe_right = [0.50, 0.18, -0.60]
-
-        # Bed “pillow” gesture
+        # --- Simple (existing) poses (kept intact for bed/kitchen) ---
+        self.pose_stow = [0.20, 0.00, 0.00]  # simple joints
         self.pose_bed_ready = [0.75, 0.10, 0.00]
         self.pose_pillow_center = [0.75, 0.20, 0.00]
-        self.pose_pillow_top    = [0.85, 0.20, 0.00]
-
-        # Kitchen snack “present”
+        self.pose_pillow_top = [0.85, 0.20, 0.00]
         self.pose_kitchen_ready = [0.55, 0.10, 0.00]
         self.pose_present_snack = [0.55, 0.25, 0.00]
 
-    def _wait_for_base_idle(self, timeout_s: float = 10.0) -> bool:
-        if hasattr(self.motion, "is_busy") and self.motion.is_busy():
-            self.node.get_logger().info("[DEMO] waiting for base motion to finish...")
-            ok = self.motion.wait_until_idle(timeout_s=timeout_s)
-            if not ok:
-                self.node.get_logger().warn("[DEMO] base still moving; skipping demo.")
-            return ok
-        return True
-
-    def _arm_pose(self, pose, duration_s=2.0):
+    def _arm_pose(self, joint_names, pose, duration_s=2.0):
         if not self.arm_ready:
             self.node.get_logger().error("[ARM] ArmCommander not ready (action server or joint_states missing).")
             return False
-        return self.arm.send_pose(self.demo_joints, pose, duration_s=duration_s, wait=True)
-    
+        return self.arm.send_pose(joint_names, pose, duration_s=duration_s, wait=True)
+
     def transit(self, from_loc: str, to_loc: str):
         if not self.motion_enabled:
             self.node.get_logger().info("[MOTION] transit skipped (motion disabled)")
@@ -84,13 +73,8 @@ class DeterministicDemos:
 
         self.motion.run_sequence_async(seq)
 
-    # -----------------------------
-    # Demo safety: wait for base to stop
-    # -----------------------------
     def _wait_for_base_idle(self, timeout_s: float = 10.0) -> bool:
-        # If your BaseMotion doesn't yet expose these, add the small patch below.
         if not hasattr(self.motion, "is_busy"):
-            # Fallback: just sleep a moment (won't be as safe, but prevents crashes)
             self.node.get_logger().warn("[DEMO] BaseMotion missing is_busy(); sleeping 0.5s fallback")
             time.sleep(0.5)
             return True
@@ -104,6 +88,9 @@ class DeterministicDemos:
             self.node.get_logger().warn("[DEMO] base motion still busy; skipping demo for safety.")
         return ok
 
+    # -----------------------------
+    # UPDATED DESK DEMO ONLY
+    # -----------------------------
     def desk_demo(self, thoroughness: str):
         if not self._wait_for_base_idle():
             return
@@ -119,56 +106,85 @@ class DeterministicDemos:
             self.node.get_logger().error("[DEMO] Arm not ready; cannot run desk demo.")
             return
 
-        # --- Desk-specific joints (add pitch for realism) ---
-        desk_joints = ["joint_lift", "wrist_extension", "joint_wrist_pitch", "joint_wrist_yaw"]
+        # ---- Calibration knobs (tune safely) ----
+        # If gripper faces right when yaw=0, set straight_yaw to +/-1.57
+        straight_yaw = 0.0
+        lift_high = 0.80
+        ext_retracted = 0.05
+        ext_reach = 0.22
+        pitch_hover = -0.20
+        pitch_wipe = -0.95
+        yaw_span = 0.80
+        sweeps_per_pass = 3
+        # ----------------------------------------
 
-        # --- Poses (TUNE) ---
-        stow =        [0.20, 0.00,  0.00,  0.00]
-        ready =       [0.55, 0.12, -0.20,  0.00]   # slight pitch down
-        contactish =  [0.55, 0.18, -0.85,  0.00]   # wipe pitch
-        yaw_left =    +0.75
-        yaw_right =   -0.75
+        # Pose format: [joint_lift, wrist_extension, joint_wrist_pitch, joint_wrist_yaw]
+        stow = [0.20, 0.00, 0.00, 0.00]
 
-        # Micro-staging motion (optional but makes it feel intentional)
-        # Small forward nudge, then stop (uses your serialized motion worker)
+        # Phase 1: lift high + face straight (no reach yet)
+        high_hover = [lift_high, ext_retracted, pitch_hover, straight_yaw]
+
+        # Phase 2: extend straight once
+        reach_pose = [lift_high, ext_reach, pitch_hover, straight_yaw]
+
+        # Phase 3: pitch down for wiping (keep extension + straight yaw)
+        wipe_ready = [lift_high, ext_reach, pitch_wipe, straight_yaw]
+
+        left = straight_yaw + yaw_span
+        right = straight_yaw - yaw_span
+
+        # Optional micro-stage: tiny base nudge forward for intentionality
         def stage_seq():
-            self.node.get_logger().info("[DEMO] staging base position for desk demo")
-            self.motion.drive_distance(0.05, timeout_s=2.0)  # 5cm
+            self.node.get_logger().info("[DEMO] staging base position for desk demo (5cm)")
+            self.motion.drive_distance(0.05, timeout_s=2.0)
+
+        # Run staging (serialized) then wait briefly for completion
         self.motion.run_sequence_async(stage_seq)
-        self.motion.wait_until_idle(timeout_s=3.0)
+        if hasattr(self.motion, "wait_until_idle"):
+            self.motion.wait_until_idle(timeout_s=3.0)
+        else:
+            time.sleep(1.0)
 
         with self._arm_lock:
-            # Move to ready
-            self.arm.send_pose(desk_joints, ready, duration_s=2.0, wait=True)
+            self.node.get_logger().info("[DEMO] Phase 1: lift high + align yaw straight")
+            self.arm.send_pose(self.desk_joints, high_hover, duration_s=2.0, wait=True)
+
+            self.node.get_logger().info("[DEMO] Phase 2: extend straight once")
+            self.arm.send_pose(self.desk_joints, reach_pose, duration_s=1.5, wait=True)
+
+            self.node.get_logger().info("[DEMO] Phase 3: pitch down for wiping")
+            self.arm.send_pose(self.desk_joints, wipe_ready, duration_s=1.0, wait=True)
 
             for p in range(passes):
-                self.node.get_logger().info(f"[DEMO] wipe routine {p+1}/{passes}")
+                self.node.get_logger().info(f"[DEMO] Phase 4: wiping pass {p+1}/{passes}")
 
-                # Build smooth wipe trajectory (time_from_start in seconds)
-                # ready -> pitch down -> sweep L/R a few times -> back center
                 points = []
-                t = 1.0
-                points.append((contactish, t))  # pitch down
+                t = 0.8
 
-                # 3 full sweeps per pass (tune)
-                sweeps = 3
-                for i in range(sweeps):
+                # Ensure we're in wipe_ready first (helps repeatability)
+                points.append((wipe_ready, t))
+
+                for _ in range(sweeps_per_pass):
                     t += 0.8
-                    points.append(([contactish[0], contactish[1], contactish[2], yaw_left], t))
+                    points.append(([wipe_ready[0], wipe_ready[1], wipe_ready[2], left], t))
                     t += 0.8
-                    points.append(([contactish[0], contactish[1], contactish[2], yaw_right], t))
+                    points.append(([wipe_ready[0], wipe_ready[1], wipe_ready[2], right], t))
 
-                # Return yaw center + slight lift up
-                t += 0.8
-                points.append(([ready[0], ready[1], ready[2], 0.0], t))
+                # Return to center yaw at the end
+                t += 0.6
+                points.append(([wipe_ready[0], wipe_ready[1], wipe_ready[2], straight_yaw], t))
 
-                self.arm.send_trajectory(desk_joints, points, wait=True)
+                self.arm.send_trajectory(self.desk_joints, points, wait=True)
 
-            # Return to stow
-            self.arm.send_pose(desk_joints, stow, duration_s=2.5, wait=True)
+            self.node.get_logger().info("[DEMO] Phase 5: retract + stow")
+            self.arm.send_pose(self.desk_joints, high_hover, duration_s=1.5, wait=True)
+            self.arm.send_pose(self.desk_joints, stow, duration_s=2.5, wait=True)
 
         self.node.get_logger().info("[DEMO] Desk demo complete")
 
+    # -----------------------------
+    # Existing demos (unchanged behavior)
+    # -----------------------------
     def bed_demo(self, arrangement: str):
         if not self._wait_for_base_idle():
             return
@@ -177,13 +193,12 @@ class DeterministicDemos:
         self.node.get_logger().info(f"[DEMO] Bed demo start (arrangement={arrangement})")
 
         with self._arm_lock:
-            self._arm_pose(self.pose_bed_ready, duration_s=2.0)
-            self._arm_pose(target, duration_s=2.0)
+            self._arm_pose(self.simple_joints, self.pose_bed_ready, duration_s=2.0)
+            self._arm_pose(self.simple_joints, target, duration_s=2.0)
             time.sleep(0.5)
-            self._arm_pose(self.pose_stow, duration_s=2.5)
+            self._arm_pose(self.simple_joints, self.pose_stow, duration_s=2.5)
 
         self.node.get_logger().info("[DEMO] Bed demo complete")
-
 
     def kitchen_demo(self, snack: str):
         if not self._wait_for_base_idle():
@@ -192,9 +207,9 @@ class DeterministicDemos:
         self.node.get_logger().info(f"[DEMO] Kitchen demo start (snack={snack})")
 
         with self._arm_lock:
-            self._arm_pose(self.pose_kitchen_ready, duration_s=2.0)
-            self._arm_pose(self.pose_present_snack, duration_s=2.0)
+            self._arm_pose(self.simple_joints, self.pose_kitchen_ready, duration_s=2.0)
+            self._arm_pose(self.simple_joints, self.pose_present_snack, duration_s=2.0)
             time.sleep(0.5)
-            self._arm_pose(self.pose_stow, duration_s=2.5)
+            self._arm_pose(self.simple_joints, self.pose_stow, duration_s=2.5)
 
         self.node.get_logger().info("[DEMO] Kitchen demo complete")
