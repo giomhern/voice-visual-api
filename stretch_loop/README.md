@@ -174,3 +174,22 @@ Cloning into '.'...
 Cloning into '.'...
 hello-robot@stretch-se3-3103:~$ 
 
+
+
+Do you want to continue? [Y/n] y
+Err:1 http://packages.ros.org/ros2/ubuntu jammy/main amd64 ros-humble-librealsense2 amd64 2.55.1-1jammy.20241125.233100
+  404  Not Found [IP: 140.211.166.134 80]
+Err:2 http://packages.ros.org/ros2/ubuntu jammy/main amd64 ros-humble-realsense2-camera-msgs amd64 4.55.1-1jammy.20250325.190214
+  404  Not Found [IP: 140.211.166.134 80]
+Err:3 http://packages.ros.org/ros2/ubuntu jammy/main amd64 ros-humble-realsense2-camera amd64 4.55.1-1jammy.20250325.220303
+  404  Not Found [IP: 140.211.166.134 80]
+Err:4 http://packages.ros.org/ros2/ubuntu jammy/main amd64 ros-humble-rtabmap-examples amd64 0.21.10-1jammy.20250326.163718
+  404  Not Found [IP: 140.211.166.134 80]
+Err:5 http://packages.ros.org/ros2/ubuntu jammy/main amd64 ros-humble-rtabmap-ros amd64 0.21.10-1jammy.20250326.163827
+  404  Not Found [IP: 140.211.166.134 80]
+E: Failed to fetch http://packages.ros.org/ros2/ubuntu/pool/main/r/ros-humble-librealsense2/ros-humble-librealsense2_2.55.1-1jammy.20241125.233100_amd64.deb  404  Not Found [IP: 140.211.166.134 80]
+E: Failed to fetch http://packages.ros.org/ros2/ubuntu/pool/main/r/ros-humble-realsense2-camera-msgs/ros-humble-realsense2-camera-msgs_4.55.1-1jammy.20250325.190214_amd64.deb  404  Not Found [IP: 140.211.166.134 80]
+E: Failed to fetch http://packages.ros.org/ros2/ubuntu/pool/main/r/ros-humble-realsense2-camera/ros-humble-realsense2-camera_4.55.1-1jammy.20250325.220303_amd64.deb  404  Not Found [IP: 140.211.166.134 80]
+E: Failed to fetch http://packages.ros.org/ros2/ubuntu/pool/main/r/ros-humble-rtabmap-examples/ros-humble-rtabmap-examples_0.21.10-1jammy.20250326.163718_amd64.deb  404  Not Found [IP: 140.211.166.134 80]
+E: Failed to fetch http://packages.ros.org/ros2/ubuntu/pool/main/r/ros-humble-rtabmap-ros/ros-humble-rtabmap-ros_0.21.10-1jammy.20250326.163827_amd64.deb  404  Not Found [IP: 140.211.166.134 80]
+E: Unable to fetch some archives, maybe run apt-get update or try with --fix-missing?
