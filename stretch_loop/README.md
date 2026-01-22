@@ -109,3 +109,68 @@ or contact Hello Robot support
 #############################################
 
 ```
+
+
+ cat ~/stretch_user/log/stretch_create_ament_workspace.202601221434_redirected.txt | head -n 60
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: numpy==1.26.4 in /home/hello-robot/.local/lib/python3.10/site-packages (1.26.4)
+WARNING: Error parsing dependencies of flatbuffers: Invalid version: '1.12.1-git20200711.33e2d80-dfsg1-0.6'
+reading in sources list data from /etc/ros/rosdep/sources.list.d
+Hit https://raw.githubusercontent.com/ros/rosdistro/master/rosdep/osx-homebrew.yaml
+Hit https://raw.githubusercontent.com/ros/rosdistro/master/rosdep/base.yaml
+Hit https://raw.githubusercontent.com/ros/rosdistro/master/rosdep/python.yaml
+Hit https://raw.githubusercontent.com/ros/rosdistro/master/rosdep/ruby.yaml
+Hit https://raw.githubusercontent.com/ros/rosdistro/master/releases/fuerte.yaml
+Query rosdistro index https://raw.githubusercontent.com/ros/rosdistro/master/index-v4.yaml
+Add distro "ardent"
+Add distro "bouncy"
+Add distro "crystal"
+Add distro "dashing"
+Add distro "eloquent"
+Add distro "foxy"
+Add distro "galactic"
+Add distro "groovy"
+Add distro "humble"
+Add distro "hydro"
+Add distro "indigo"
+Add distro "iron"
+Add distro "jade"
+Add distro "jazzy"
+Add distro "kilted"
+Add distro "kinetic"
+Add distro "lunar"
+Add distro "melodic"
+Add distro "noetic"
+Add distro "rolling"
+updated cache in /home/hello-robot/.ros/rosdep/sources.cache
+..........
+=== ./audio_common (git) ===
+Cloning into '.'...
+=== ./realsense-ros (git) ===
+Cloning into '.'...
+Note: switching to '4.55.1'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 8a86cb88 4.55.1
+=== ./respeaker_ros2 (git) ===
+Cloning into '.'...
+=== ./ros2_numpy (git) ===
+Cloning into '.'...
+=== ./rosbridge_suite (git) ===
+Cloning into '.'...
+hello-robot@stretch-se3-3103:~$ 
+
