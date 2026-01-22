@@ -1,16 +1,12 @@
-# This file maps locations for which the robot should move to based on the FUNMAP pose coordinates. The below are placeholder for now!
-
 frame_id: map
+
+# Optional but recommended for AMCL
+initial_pose:
+  x: 0.0
+  y: 0.0
+  yaw: 0.0
+
 goals:
-  desk:
-    x: 1.23
-    y: -0.45
-    yaw: 1.57
-  bed:
-    x: 0.10
-    y: 2.05
-    yaw: 3.14
-  kitchen:
-    x: -1.50
-    y: 0.70
-    yaw: -1.57
+  desk: { x: 17.86, y: -0.77, yaw: 0.0 }
+  bed: { x: 12.10, y: 3.05, yaw: 1.57 }
+  kitchen: { x: 5.50, y: -2.40, yaw: 3.14 }

@@ -24,6 +24,7 @@ setup(
             'study_engine = stretch_study.nodes.study_engine:main',
             'keyboard_teleop = stretch_study.adapters.keyboard_teleop:main',
             'event_cli = stretch_study.adapters.event_cli:main',
+            'speech_node = stretch_study.nodes.speech_node:main',
         ],
     },
 )
