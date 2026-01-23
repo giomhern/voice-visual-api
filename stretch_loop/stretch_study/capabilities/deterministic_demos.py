@@ -40,6 +40,28 @@ class DeterministicDemos:
         self.pose_kitchen_ready = [0.55, 0.10, 0.00]
         self.pose_present_snack = [0.55, 0.25, 0.00]
 
+    def set_speed_mode(self, speed: str):
+        """
+        Apply user-facing speed labels to real motion speeds.
+        This affects deterministic transit + any BaseMotion usage.
+        """
+        s = (speed or "").lower().strip()
+        if s == "slow":
+            self.motion.linear_speed = 0.08
+            self.motion.angular_speed = 0.4
+        elif s == "fast":
+            self.motion.linear_speed = 0.18
+            self.motion.angular_speed = 0.9
+        else:
+            # medium/default
+            self.motion.linear_speed = 0.12
+            self.motion.angular_speed = 0.6
+
+        self.node.get_logger().info(
+            f"[MOTION] set_speed_mode={s} -> linear_speed={self.motion.linear_speed:.2f} m/s "
+            f"angular_speed={self.motion.angular_speed:.2f} rad/s"
+        )
+
     def _arm_pose(self, joint_names, pose, duration_s=2.0):
         if not self.arm_ready:
             self.node.get_logger().error("[ARM] ArmCommander not ready (action server or joint_states missing).")
@@ -118,32 +140,13 @@ class DeterministicDemos:
         sweeps_per_pass = 3
         # ----------------------------------------
 
-        # Pose format: [joint_lift, wrist_extension, joint_wrist_pitch, joint_wrist_yaw]
         stow = [0.20, 0.00, 0.00, 0.00]
-
-        # Phase 1: lift high + face straight (no reach yet)
         high_hover = [lift_high, ext_retracted, pitch_hover, straight_yaw]
-
-        # Phase 2: extend straight once
         reach_pose = [lift_high, ext_reach, pitch_hover, straight_yaw]
-
-        # Phase 3: pitch down for wiping (keep extension + straight yaw)
         wipe_ready = [lift_high, ext_reach, pitch_wipe, straight_yaw]
 
         left = straight_yaw + yaw_span
         right = straight_yaw - yaw_span
-
-        # # Optional micro-stage: tiny base nudge forward for intentionality
-        # def stage_seq():
-        #     self.node.get_logger().info("[DEMO] staging base position for desk demo (5cm)")
-        #     self.motion.drive_distance(0.05, timeout_s=2.0)
-
-        # # Run staging (serialized) then wait briefly for completion
-        # self.motion.run_sequence_async(stage_seq)
-        # if hasattr(self.motion, "wait_until_idle"):
-        #     self.motion.wait_until_idle(timeout_s=3.0)
-        # else:
-        #     time.sleep(1.0)
 
         with self._arm_lock:
             self.node.get_logger().info("[DEMO] Phase 1: lift high + align yaw straight")
@@ -160,8 +163,6 @@ class DeterministicDemos:
 
                 points = []
                 t = 0.8
-
-                # Ensure we're in wipe_ready first (helps repeatability)
                 points.append((wipe_ready, t))
 
                 for _ in range(sweeps_per_pass):
@@ -170,7 +171,6 @@ class DeterministicDemos:
                     t += 0.8
                     points.append(([wipe_ready[0], wipe_ready[1], wipe_ready[2], right], t))
 
-                # Return to center yaw at the end
                 t += 0.6
                 points.append(([wipe_ready[0], wipe_ready[1], wipe_ready[2], straight_yaw], t))
 
@@ -182,9 +182,6 @@ class DeterministicDemos:
 
         self.node.get_logger().info("[DEMO] Desk demo complete")
 
-    # -----------------------------
-    # Existing demos (unchanged behavior)
-    # -----------------------------
     def bed_demo(self, arrangement: str):
         if not self._wait_for_base_idle():
             return

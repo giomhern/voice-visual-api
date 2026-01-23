@@ -14,15 +14,17 @@ class SpeechNode(Node):
     """
     Subscribes to /speech_request (std_msgs/String JSON) and speaks via the robot speaker.
 
-    Message format (JSON in String):
+    JSON format:
       {
-        "text": "Hello there!",
-        "rate": 170,              # optional
-        "voice": "auto",          # optional (pyttsx3/espeak best-effort)
-        "gain": 1.0,              # optional local gain (pyttsx3 volume 0..1)
-        "volume": 60,             # optional system volume 0..100 (pactl/amixer)
-        "interrupt": false        # optional: if true, clears queue before speaking
+        "text": "Hello!",
+        "rate": 170,          # optional
+        "voice": "auto",      # optional
+        "gain": 1.0,          # optional (pyttsx3 0..1)
+        "volume": 60,         # optional (system volume 0..100)
+        "interrupt": false    # optional: clears queue before speaking
       }
+
+    Publishes /speech_status as JSON (start/done/errors).
     """
 
     def __init__(self):
@@ -35,8 +37,8 @@ class SpeechNode(Node):
         self.declare_parameter("speech.default_voice", "auto")
         self.declare_parameter("speech.queue_size", 20)
 
-        self.topic_in = self.get_parameter("speech.topic_in").value
-        self.topic_out = self.get_parameter("speech.topic_out").value
+        self.topic_in = str(self.get_parameter("speech.topic_in").value)
+        self.topic_out = str(self.get_parameter("speech.topic_out").value)
 
         self.default_volume = int(self.get_parameter("speech.default_volume").value)
         self.default_rate = int(self.get_parameter("speech.default_rate").value)
@@ -56,7 +58,7 @@ class SpeechNode(Node):
 
     def _publish_status(self, status: dict):
         msg = String()
-        msg.data = json.dumps(status)
+        msg.data = json.dumps(status, ensure_ascii=False)
         self.pub_status.publish(msg)
 
     def _on_req(self, msg: String):
@@ -71,14 +73,12 @@ class SpeechNode(Node):
 
         interrupt = bool(req.get("interrupt", False))
         if interrupt:
-            # Clear queue
             while not self._q.empty():
                 try:
                     self._q.get_nowait()
                 except Exception:
                     break
 
-        # Fill defaults
         req["text"] = text
         req.setdefault("volume", self.default_volume)
         req.setdefault("rate", self.default_rate)
@@ -87,7 +87,7 @@ class SpeechNode(Node):
 
         try:
             self._q.put_nowait(req)
-            self.get_logger().info(f"[SPEECH] enqueued: {text[:80]}")
+            self.get_logger().info(f"[SPEECH] enqueued: {text[:100]}")
         except queue.Full:
             self.get_logger().warn("[SPEECH] queue full; dropping utterance")
             self._publish_status({"type": "dropped", "reason": "queue_full", "text": text})
@@ -106,12 +106,11 @@ class SpeechNode(Node):
             gain = req.get("gain")
 
             self._publish_status({"type": "start", "text": text})
-            self.get_logger().info(f"[SPEECH] speaking: {text[:80]}")
+            self.get_logger().info(f"[SPEECH] speaking: {text[:120]}")
 
-            # Best-effort set system volume
             if vol is not None:
                 ok, msg, meta = set_volume(int(vol))
-                self.get_logger().info(f"[SPEECH] volume set ok={ok} msg={msg}")
+                self.get_logger().info(f"[SPEECH] set_volume ok={ok} msg={msg}")
                 self._publish_status({"type": "volume", "ok": ok, "msg": msg, "meta": meta, "volume": int(vol)})
 
             ok, msg, meta = say_text(text, rate=rate, voice=voice, local_gain=gain)

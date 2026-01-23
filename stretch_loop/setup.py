@@ -20,11 +20,12 @@ setup(
     license='MIT',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': [
-            'study_engine = stretch_study.nodes.study_engine:main',
-            'keyboard_teleop = stretch_study.adapters.keyboard_teleop:main',
-            'event_cli = stretch_study.adapters.event_cli:main',
-            'speech_node = stretch_study.nodes.speech_node:main',
-        ],
-    },
+    "console_scripts": [
+        "study_engine = stretch_study.study_engine:main",
+        "keyboard_teleop = stretch_study.keyboard_teleop:main",
+        "speech_node = stretch_study.nodes.speech_node:main",
+        "voice_assistant_node = stretch_study.nodes.voice_assistant_node:main",
+        "cmd_vel_scaler = stretch_study.nodes.cmd_vel_scaler:main",
+    ],
+},
 )
