@@ -110,3 +110,11 @@ def build_script():
 ros2 pkg executables stretch_study | grep speech
 grep -R "kokoro-82m" -n ~/voice-visual-api/stretch_loop/src/stretch_study | head
 grep -R "Kokoro-82M" -n ~/voice-visual-api/stretch_loop/src/stretch_study | head
+
+eightNorm.apply(module, name, dim)
+[INFO] [1769227095.840019420] [stretch_study_speech]: [SPEECH] Kokoro pipeline loaded.
+[INFO] [1769227095.842085371] [stretch_study_speech]: [SPEECH] Ready. Subscribed to /speech_request
+[INFO] [1769227102.427175278] [stretch_study_speech]: [SPEECH] queued voice=auto vol=60 text='Voice assistant online.'
+[ERROR] [1769227102.531748852] [stretch_study_speech]: [SPEECH] Kokoro failed: 404 Client Error. (Request ID: Root=1-6974435e-62deb65432c638215de22a50;b2fa5115-3498-405c-9883-b8502b38f38f)
+
+Entry Not Found for url: https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices/auto.pt.
