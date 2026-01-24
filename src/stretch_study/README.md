@@ -74,3 +74,7 @@ Replace the gesture demo bodies in:
 - `stretch_study/capabilities/deterministic_demos.py`
 
 with calls into your Stretch ROS 2 stack (arm trajectories, base motions, etc.).
+
+
+ros2 topic pub --once /speech_request std_msgs/msg/String \
+'{"data":"{\"text\":\"Hello, I am using af_heart.\",\"volume\":70,\"voice\":\"af_heart\",\"interrupt\":true}"}'

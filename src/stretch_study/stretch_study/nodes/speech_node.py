@@ -91,23 +91,21 @@ class SpeechNode(Node):
             return
 
         volume = clamp_int(payload.get("volume", 60), 0, 100, 60)
+
         voice = str(payload.get("voice", self.default_voice)).strip() or self.default_voice
+        if voice.lower() == "auto":
+            voice = self.default_voice
+
         interrupt = bool(payload.get("interrupt", False))
 
-        # NOTE: Kokoro does not expose a clean "rate" control like espeak.
-        # We'll accept it but not apply it (to keep audio natural).
-        rate = payload.get("rate", None)
-
         if interrupt:
-            # Stop current playback immediately and clear queue
             try:
                 sd.stop()
             except Exception:
                 pass
             self._drain_queue()
 
-        self.q.put({"text": text, "volume": volume, "voice": voice, "rate": rate})
-
+        self.q.put({"text": text, "volume": volume, "voice": voice})
         self.get_logger().info(f"[SPEECH] queued voice={voice} vol={volume} text='{text[:60]}'")
 
     def _drain_queue(self):
