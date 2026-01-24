@@ -101,4 +101,8 @@ def build_script():
         {"id": "end", "prompt": "Thank you. Setup is complete."},
     ]
 
-    bottom of script_steps.py
+    bottom of script_s
+
+
+    ros2 topic pub --once /speech_request std_msgs/msg/String \
+'{"data":"{\"text\":\"Hello, I am using af_heart.\",\"volume\":70,\"voice\":\"af_heart\",\"interrupt\":true}"}'
