@@ -26,6 +26,7 @@ setup(
             'speech_node = stretch_study.nodes.speech_node:main',
             'voice_assistant_node = stretch_study.nodes.voice_assistant_node:main',
             'cmd_vel_scaler = stretch_study.nodes.cmd_vel_scaler:main',
+            "settings_bridge_server = stretch_study.nodes.settings_bridge_server:main",
         ],
     },
 )
