@@ -172,4 +172,11 @@ PY
 16 vdownmix | SR: 44100.0
 17 dmix | SR: 48000.0
 18 default | SR: 44100.0
-hello-robot@stretch-se3-3103:~/voice-visual-api$ 
+hello-robot@stretch-se3-3103:~/voice-visual-api$
+
+
+hello-robot@stretch-se3-3103:~$ pactl list short sources
+0	alsa_output.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.analog-stereo.monitor	module-alsa-card.c	s24le 2ch 16000Hz	SUSPENDED
+1	alsa_input.usb-SEEED_ReSpeaker_4_Mic_Array__UAC1.0_-00.multichannel-input	module-alsa-card.c	s16le 6ch 16000Hz	RUNNING
+2	alsa_output.pci-0000_00_1f.3.analog-stereo.monitor	module-alsa-card.c	s16le 2ch 44100Hz	IDLE
+[5]+  Terminated              sleep 5
