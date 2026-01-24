@@ -139,3 +139,37 @@ for i,d in enumerate(sd.query_devices()):
     if d['max_output_channels'] > 0:
         print(i, d['name'], "| SR:", d['default_samplerate'])
 PY
+
+
+
+=== INPUT DEVICES ===
+0 HDA Intel PCH: ALC269VB Analog (hw:0,0) | SR: 44100.0
+6 sysdefault | SR: 48000.0
+12 samplerate | SR: 44100.0
+13 speexrate | SR: 44100.0
+14 pulse | SR: 44100.0
+15 upmix | SR: 44100.0
+16 vdownmix | SR: 44100.0
+18 default | SR: 44100.0
+
+=== OUTPUT DEVICES ===
+0 HDA Intel PCH: ALC269VB Analog (hw:0,0) | SR: 44100.0
+1 HDA Intel PCH: HDMI 0 (hw:0,3) | SR: 44100.0
+2 HDA Intel PCH: HDMI 1 (hw:0,7) | SR: 44100.0
+3 HDA Intel PCH: HDMI 2 (hw:0,8) | SR: 44100.0
+4 HDA Intel PCH: HDMI 3 (hw:0,9) | SR: 44100.0
+5 ReSpeaker 4 Mic Array (UAC1.0): USB Audio (hw:1,0) | SR: 16000.0
+6 sysdefault | SR: 48000.0
+7 front | SR: 44100.0
+8 surround40 | SR: 44100.0
+9 surround51 | SR: 44100.0
+10 surround71 | SR: 44100.0
+11 hdmi | SR: 44100.0
+12 samplerate | SR: 44100.0
+13 speexrate | SR: 44100.0
+14 pulse | SR: 44100.0
+15 upmix | SR: 44100.0
+16 vdownmix | SR: 44100.0
+17 dmix | SR: 48000.0
+18 default | SR: 44100.0
+hello-robot@stretch-se3-3103:~/voice-visual-api$ 
