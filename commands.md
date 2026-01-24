@@ -118,3 +118,11 @@ eightNorm.apply(module, name, dim)
 [ERROR] [1769227102.531748852] [stretch_study_speech]: [SPEECH] Kokoro failed: 404 Client Error. (Request ID: Root=1-6974435e-62deb65432c638215de22a50;b2fa5115-3498-405c-9883-b8502b38f38f)
 
 Entry Not Found for url: https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/voices/auto.pt.
+
+
+python3 - <<'PY'
+import sounddevice as sd
+print("DEFAULT IN:", sd.default.device)
+for i,d in enumerate(sd.query_devices()):
+    if d.get('max_input_channels',0)>0:
+        print(i, d['name'])
