@@ -126,3 +126,16 @@ print("DEFAULT IN:", sd.default.device)
 for i,d in enumerate(sd.query_devices()):
     if d.get('max_input_channels',0)>0:
         print(i, d['name'])
+python3 - <<'PY'
+import sounddevice as sd
+print("Default device:", sd.default.device)
+print("\n=== INPUT DEVICES ===")
+for i,d in enumerate(sd.query_devices()):
+    if d['max_input_channels'] > 0:
+        print(i, d['name'], "| SR:", d['default_samplerate'])
+
+print("\n=== OUTPUT DEVICES ===")
+for i,d in enumerate(sd.query_devices()):
+    if d['max_output_channels'] > 0:
+        print(i, d['name'], "| SR:", d['default_samplerate'])
+PY
