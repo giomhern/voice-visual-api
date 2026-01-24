@@ -9,13 +9,11 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
-# Requires: pip install RealtimeSTT (already on Stretch per your setup)
 from RealtimeSTT import AudioToTextRecorder
 
 EVENTS_BLOCK_RE = re.compile(r"\[EVENTS\](.*?)\[/EVENTS\]", re.DOTALL | re.IGNORECASE)
 
 YES_WORDS = {"yes", "yep", "yeah", "correct", "confirmed", "confirm", "sounds good", "sure", "ok", "okay"}
-NO_WORDS = {"no", "nope", "nah", "incorrect"}
 HALLUCINATION_PHRASES = {"", " ", ".", "...", "um", "uh", "hmm"}
 
 
@@ -23,23 +21,28 @@ class VoiceAssistantNode(Node):
     def __init__(self):
         super().__init__("stretch_voice_assistant")
 
-        self.declare_parameter("ollama.url", "http://localhost:11434/api/chat")
+        # --- Ollama ---
+        self.declare_parameter("ollama.url", "http://127.0.0.1:11434/api/chat")  # <-- use 127.0.0.1
         self.declare_parameter("ollama.model", "llama3.1:8b")
-        self.declare_parameter("ollama.timeout_s", 30.0)
+        self.declare_parameter("ollama.timeout_s", 120.0)
 
+        # --- Topics ---
         self.declare_parameter("topics.prompt_in", "/study_prompt")
         self.declare_parameter("topics.event_out", "/study_event")
         self.declare_parameter("topics.speech_out", "/speech_request")
 
+        # --- Speech defaults (speech_node uses these) ---
         self.declare_parameter("speech.volume", 60)
         self.declare_parameter("speech.rate", 170)
         self.declare_parameter("speech.voice", "auto")
 
+        # --- Assistant behavior ---
         self.declare_parameter("assistant.auto_listen", True)
-        self.declare_parameter("assistant.speak_prompts", False)
+        self.declare_parameter("assistant.speak_prompts", True)   # <-- default ON so you hear prompts
         self.declare_parameter("assistant.debug_log", True)
+        self.declare_parameter("assistant.startup_say", True)     # <-- NEW: always speak once at startup
 
-        # STT tuning
+        # --- STT tuning ---
         self.declare_parameter("stt.language", "en")
         self.declare_parameter("stt.silero_sensitivity", 0.15)
         self.declare_parameter("stt.webrtc_sensitivity", 2)
@@ -62,6 +65,7 @@ class VoiceAssistantNode(Node):
         self.auto_listen = bool(self.get_parameter("assistant.auto_listen").value)
         self.speak_prompts = bool(self.get_parameter("assistant.speak_prompts").value)
         self.debug_log = bool(self.get_parameter("assistant.debug_log").value)
+        self.startup_say = bool(self.get_parameter("assistant.startup_say").value)
 
         self.pub_speech = self.create_publisher(String, self.speech_topic, 10)
         self.pub_event = self.create_publisher(String, self.event_topic, 10)
@@ -73,6 +77,7 @@ class VoiceAssistantNode(Node):
 
         self._busy_lock = threading.Lock()
 
+        # STT recorder
         self.recorder = AudioToTextRecorder(
             language=str(self.get_parameter("stt.language").value),
             silero_sensitivity=float(self.get_parameter("stt.silero_sensitivity").value),
@@ -85,12 +90,24 @@ class VoiceAssistantNode(Node):
             spinner=False,
         )
 
-        self.get_logger().info("VoiceAssistantNode ready.")
+        self.get_logger().info(
+            f"VoiceAssistantNode ready. model={self.ollama_model} url={self.ollama_url} speak_prompts={self.speak_prompts}"
+        )
+
+        # Always speak once at startup so you can verify /speech_request works
+        if self.startup_say:
+            self._speak("Voice assistant online.", interrupt=True)
 
         if self.auto_listen:
             threading.Thread(target=self._listen_loop, daemon=True).start()
 
+    # ----------------- ROS publish helpers -----------------
+
     def _speak(self, text: str, interrupt: bool = False):
+        text = (text or "").strip()
+        if not text:
+            return
+
         msg = String()
         msg.data = json.dumps(
             {
@@ -104,12 +121,17 @@ class VoiceAssistantNode(Node):
         )
         self.pub_speech.publish(msg)
 
+        if self.debug_log:
+            self.get_logger().info(f"[SPEECH_OUT] {text[:120]}")
+
     def _emit_event(self, ev: dict):
         msg = String()
         msg.data = json.dumps(ev, ensure_ascii=False)
         self.pub_event.publish(msg)
         if self.debug_log:
             self.get_logger().info(f"[EVENT_OUT] {msg.data}")
+
+    # ----------------- prompt in -----------------
 
     def _on_prompt(self, msg: String):
         try:
@@ -126,7 +148,10 @@ class VoiceAssistantNode(Node):
         if self.speak_prompts and self.current_prompt:
             self._speak(self.current_prompt, interrupt=True)
 
+    # ----------------- STT loop -----------------
+
     def _listen_loop(self):
+        self.get_logger().info("[STT] listen loop started")
         while rclpy.ok():
             if self._busy_lock.locked():
                 time.sleep(0.05)
@@ -142,7 +167,7 @@ class VoiceAssistantNode(Node):
         if not text:
             return
 
-        cleaned = text.strip().lower().rstrip(".,!?")
+        cleaned = text.lower().strip().rstrip(".,!?")
         if cleaned in HALLUCINATION_PHRASES:
             return
 
@@ -156,26 +181,30 @@ class VoiceAssistantNode(Node):
             raw = self._chat_with_ollama(text)
             spoken, events = self._split_spoken_and_events(raw)
 
+            # Always speak something, even if events-only (use a small fallback)
             if spoken.strip():
                 self._speak(spoken)
+            else:
+                self._speak("Okay.", interrupt=False)
 
             for ev in events:
                 if isinstance(ev, dict):
                     self._emit_event(ev)
 
-            # Heuristic: basic yes->advance, station mentions->arrive
-            lt = cleaned
-            if lt in YES_WORDS or lt.startswith("yes "):
+            # Optional heuristics (keep, but these can double-fire if LLM also emits them)
+            if cleaned in YES_WORDS or cleaned.startswith("yes "):
                 self._emit_event({"type": "advance"})
-            if "desk" in lt:
+            if "desk" in cleaned:
                 self._emit_event({"type": "arrive", "room": "desk"})
-            elif "bed" in lt:
+            elif "bed" in cleaned:
                 self._emit_event({"type": "arrive", "room": "bed"})
-            elif "kitchen" in lt:
+            elif "kitchen" in cleaned:
                 self._emit_event({"type": "arrive", "room": "kitchen"})
 
         finally:
             self._busy_lock.release()
+
+    # ----------------- Ollama -----------------
 
     def _chat_with_ollama(self, user_text: str) -> str:
         self.history.append({"role": "user", "content": user_text})
@@ -216,13 +245,10 @@ PART B (EVENTS): A machine-readable JSON block inside [EVENTS] ... [/EVENTS].
 EVENTS RULES:
 - Always include the [EVENTS] block, even if it is empty: {{"events":[]}}
 - Valid event objects (publish to /study_event):
-  1) Advance:
-     {{"type":"advance"}}
-  2) Arrive at a station:
-     {{"type":"arrive","room":"desk"}} or room in ["desk","bed","kitchen"]
-  3) Confirm a demo should run:
-     {{"type":"demo_confirm","room":"desk","yes":true}}
-  4) Apply a setting:
+  1) Advance: {{"type":"advance"}}
+  2) Arrive:  {{"type":"arrive","room":"desk"}} room in ["desk","bed","kitchen"]
+  3) Demo:    {{"type":"demo_confirm","room":"desk","yes":true}}
+  4) Set:
      Global: {{"type":"set","scope":"global","key":"movement_speed","value":"slow"}}
      Room:   {{"type":"set","scope":"room","room":"desk","key":"voice_volume","value":40}}
      Rules:  {{"type":"set","scope":"rules","value":{{...}}}}
@@ -239,7 +265,6 @@ Output format MUST be:
 {{"events":[ ... ]}}
 [/EVENTS]
 """
-
 
     def _split_spoken_and_events(self, assistant_text: str) -> Tuple[str, List[Dict[str, Any]]]:
         if not assistant_text:
