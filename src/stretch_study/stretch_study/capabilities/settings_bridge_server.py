@@ -16,15 +16,48 @@ def clamp_int(x: Any, lo: int, hi: int, default: int) -> int:
     return max(lo, min(hi, v))
 
 
+def coerce_speed(value: Any) -> str:
+    """
+    Accepts:
+      - "slow" | "medium" | "fast"
+      - numeric scale 0.0..1.0 (float/int)
+    Returns one of: "slow" | "medium" | "fast"
+    """
+    if value is None:
+        return "medium"
+
+    # string case
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in ("slow", "medium", "fast"):
+            return s
+        if s in ("med", "normal", "default"):
+            return "medium"
+
+    # numeric case
+    try:
+        x = float(value)
+        # Map scale -> bucket
+        # 0.0..0.45 => slow
+        # 0.45..0.8 => medium
+        # 0.8..1.0 => fast
+        if x < 0.45:
+            return "slow"
+        if x < 0.8:
+            return "medium"
+        return "fast"
+    except Exception:
+        return "medium"
+
+
 class SettingsBridge(Node):
     """
     Flask -> ROS bridge.
     Kotlin app calls HTTP endpoints; we publish StudyEvents into ROS.
 
-    Current implemented capability:
+    Implemented:
       - POST /settings/volume { "volume": 0..100 }
-        -> publishes /study_event set global voice_volume
-        -> (optional) publishes /speech_request to confirm
+      - POST /settings/movement_speed { "speed": "slow"|"medium"|"fast" } OR { "speed": 0.0..1.0 }
     """
 
     def __init__(self):
@@ -77,19 +110,34 @@ class SettingsBridge(Node):
             body = request.get_json(silent=True) or {}
             volume = clamp_int(body.get("volume"), 0, 100, default=60)
 
-            # 1) publish set event to StudyEngine (logged + stored)
+            # publish set event to StudyEngine
             self._publish_event(
                 {"type": "set", "scope": "global", "key": "voice_volume", "value": volume}
             )
 
-            # 2) optional spoken confirmation (through speech_node)
             if self.speech_confirm:
                 self._publish_speech(f"Volume set to {volume} percent.", volume=volume)
 
             return jsonify({"ok": True, "volume": volume})
 
+        @self.app.post("/settings/movement_speed")
+        def set_movement_speed():
+            body = request.get_json(silent=True) or {}
+            speed = coerce_speed(body.get("speed"))
+
+            # publish set event to StudyEngine
+            # StudyEngine will apply deterministic speed + cmd_vel_scaler if running
+            self._publish_event(
+                {"type": "set", "scope": "global", "key": "movement_speed", "value": speed}
+            )
+
+            if self.speech_confirm:
+                # use current speech volume
+                self._publish_speech(f"Movement speed set to {speed}.", volume=clamp_int(body.get("volume"), 0, 100, default=60))
+
+            return jsonify({"ok": True, "movement_speed": speed})
+
     def run_http(self):
-        # Flask must run in a thread so rclpy can spin too
         self.app.run(host=self.host, port=self.port, debug=False, use_reloader=False)
 
 
