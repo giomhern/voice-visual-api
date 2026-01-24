@@ -2,128 +2,159 @@ from __future__ import annotations
 
 import math
 import time
-from typing import Any, Dict, Optional
-
-from rclpy.node import Node
+from typing import Dict, Optional
 
 from .base_motion import BaseMotion
 
 
 class DeterministicDemos:
-    """Deterministic, low-variance demo behaviors.
+    """
+    Deterministic, low-variance demo behaviors.
 
-    These are *gesture demos* by default (safe & repeatable).
-    Swap implementation with real Stretch APIs incrementally.
+    Compatible with StudyEngine calls:
+      - transit(from_loc, to_loc)
+      - desk_demo(thoroughness)
+      - bed_demo(arrangement)
+      - kitchen_demo(snack)
+      - set_speed_mode(speed)   (for movement_speed)
     """
 
     def __init__(
         self,
-        node: Optional[Node] = None,
-        logger=None,
-        say_fn=None,
-        motion_cfg: Optional[Dict[str, Any]] = None,
+        node,
+        motion_enabled: bool = False,
+        distances: Optional[Dict[str, float]] = None,
+        cmd_vel_topic: str = "/stretch/cmd_vel",
+        odom_topic: str = "/odom",
+        **_ignored_kwargs,  # swallow unexpected keyword args safely
     ):
-        self.log = logger
-        self.say = say_fn or (lambda text: None)
         self.node = node
+        self.motion_enabled = bool(motion_enabled)
+        self.distances: Dict[str, float] = dict(distances or {})
+        self.cmd_vel_topic = str(cmd_vel_topic)
+        self.odom_topic = str(odom_topic)
 
-        motion_cfg = motion_cfg or {}
-        self.motion_enabled = bool(motion_cfg.get('enable_transit', False))
-        self.cmd_vel_topic = str(motion_cfg.get('cmd_vel_topic', '/stretch/cmd_vel'))
-        self.odom_topic = str(motion_cfg.get('odom_topic', '/odom'))
-        self.turn_left_rad = float(motion_cfg.get('turn_left_rad', math.pi / 2))
-        self.distances = dict(motion_cfg.get('distances_m', {}))
+        # Create the base motion helper
+        self.motion = BaseMotion(self.node, cmd_vel_topic=self.cmd_vel_topic, odom_topic=self.odom_topic)
 
-        self._mover: Optional[BaseMotion] = None
-        if self.node is not None:
-            # We always create the mover if a node is provided; callers can still disable motion.
-            self._mover = BaseMotion(self.node, cmd_vel_topic=self.cmd_vel_topic, odom_topic=self.odom_topic)
+        # Default turn left (90 degrees)
+        self.turn_left_rad = math.pi / 2.0
 
-    def _sleep(self, seconds: float):
-        time.sleep(seconds)
+        self.node.get_logger().info(
+            f"[DEMOS] init motion_enabled={self.motion_enabled} cmd_vel={self.cmd_vel_topic} odom={self.odom_topic} distances={self.distances}"
+        )
 
-    # ----------------------
-    # Deterministic base transit (optional)
-    # ----------------------
-    def transit(self, from_loc: str, to_room: str, movement_speed: str = 'medium') -> None:
-        """Move the base along the assumed rectangle route.
+    # -----------------------------
+    # Real motion tuning hook
+    # -----------------------------
+    def set_speed_mode(self, speed: str):
+        """
+        Apply user-facing speed labels to real deterministic motion speeds.
+        This affects BaseMotion linear/angular speed.
+        """
+        s = (speed or "").lower().strip()
 
-        Intended for controlled demo testing. Enable with motion.enable_transit.
+        # These are conservative defaults; tune as needed
+        if s == "slow":
+            self.motion.linear_speed = 0.08
+            self.motion.angular_speed = 0.4
+        elif s == "fast":
+            self.motion.linear_speed = 0.18
+            self.motion.angular_speed = 0.9
+        else:
+            self.motion.linear_speed = 0.12
+            self.motion.angular_speed = 0.6
+
+        self.node.get_logger().info(
+            f"[MOTION] set_speed_mode={s} -> linear_speed={self.motion.linear_speed:.2f} m/s "
+            f"angular_speed={self.motion.angular_speed:.2f} rad/s"
+        )
+
+    # -----------------------------
+    # Deterministic base transit (rectangle route)
+    # -----------------------------
+    def transit(self, from_loc: str, to_loc: str) -> None:
+        """
+        Move the base along the assumed rectangle route.
 
         Route assumed:
           door (bottom-right) -> desk (top-right) -> bed (top-left) -> kitchen (bottom-left)
         """
         if not self.motion_enabled:
-            return
-        if self._mover is None or self.node is None:
-            raise RuntimeError('BaseMotion not initialized (node missing).')
-
-        from_loc = (from_loc or '').lower()
-        to_room = (to_room or '').lower()
-        self._mover.set_speed_profile(movement_speed)
-
-        # Determine the leg to execute
-        # legs are configured by keys in defaults.yaml
-        if from_loc == 'door' and to_room == 'desk':
-            d = float(self.distances.get('door_to_desk', 0.0))
-            self.say('Moving to the desk area.')
-            self._mover.drive_distance(d)
-            return
-        if from_loc == 'desk' and to_room == 'bed':
-            d = float(self.distances.get('desk_to_bed', 0.0))
-            self.say('Moving to the bed area.')
-            self._mover.turn_angle(self.turn_left_rad)
-            self._mover.drive_distance(d)
-            return
-        if from_loc == 'bed' and to_room == 'kitchen':
-            d = float(self.distances.get('bed_to_kitchen', 0.0))
-            self.say('Moving to the kitchen area.')
-            self._mover.turn_angle(self.turn_left_rad)
-            self._mover.drive_distance(d)
+            self.node.get_logger().info("[MOTION] transit skipped (motion disabled)")
             return
 
-        # Unknown transition: do nothing but log
-        if self.log:
-            self.log.log_event({'type': 'transit_skipped', 'from': from_loc, 'to': to_room})
+        from_loc = (from_loc or "").lower().strip()
+        to_loc = (to_loc or "").lower().strip()
 
-    def desk_demo(self, thoroughness: str, eff: Dict[str, Any]) -> None:
-        passes = {'once': 1, 'twice': 2, 'thorough': 3, 'none': 0}.get(thoroughness, 1)
-        self.say(f"Here is how I will wipe your desk: {thoroughness}.")
-        if self.log:
-            self.log.log_event({'type': 'demo_start', 'room': 'desk', 'thoroughness': thoroughness, 'effective': eff})
+        self.node.get_logger().info(f"[MOTION] transit requested {from_loc} -> {to_loc}")
+
+        # Helper that turns left by 90 in a compatible way
+        def _turn_left():
+            if hasattr(self.motion, "turn_left_90"):
+                self.motion.turn_left_90()
+            elif hasattr(self.motion, "turn_angle"):
+                self.motion.turn_angle(self.turn_left_rad)
+            else:
+                raise RuntimeError("BaseMotion has no turn_left_90 or turn_angle")
+
+        # Build sequential motion
+        def seq():
+            if from_loc == "door" and to_loc == "desk":
+                d = float(self.distances.get("door_to_desk", 0.0))
+                self.node.get_logger().info(f"[MOTION] door->desk drive {d:.2f}m")
+                if d > 0:
+                    self.motion.drive_distance(d)
+
+            elif from_loc == "desk" and to_loc == "bed":
+                d = float(self.distances.get("desk_to_bed", 0.0))
+                self.node.get_logger().info("[MOTION] desk->bed turn left 90 then drive")
+                _turn_left()
+                if d > 0:
+                    self.motion.drive_distance(d)
+
+            elif from_loc == "bed" and to_loc == "kitchen":
+                d = float(self.distances.get("bed_to_kitchen", 0.0))
+                self.node.get_logger().info("[MOTION] bed->kitchen turn left 90 then drive")
+                _turn_left()
+                if d > 0:
+                    self.motion.drive_distance(d)
+
+            else:
+                self.node.get_logger().warn(f"[MOTION] no deterministic route for {from_loc} -> {to_loc}")
+
+        # If BaseMotion supports serialized async sequences, use it.
+        if hasattr(self.motion, "run_sequence_async"):
+            self.motion.run_sequence_async(seq)
+        else:
+            # Fallback: run inline (blocking)
+            seq()
+
+    # -----------------------------
+    # Demos (gesture placeholders)
+    # -----------------------------
+    def desk_demo(self, thoroughness: str) -> None:
+        passes = {"once": 1, "twice": 2, "thorough": 3, "none": 0}.get((thoroughness or "").lower().strip(), 2)
+        self.node.get_logger().info(f"[DEMO] Desk demo start thoroughness={thoroughness} passes={passes}")
 
         if passes == 0:
-            self.say("I will not wipe the desk.")
-            self._sleep(0.5)
-        else:
-            for i in range(passes):
-                # placeholder gesture timing
-                self.say(f"Wipe pass {i+1}.")
-                self._sleep(1.0)
+            self.node.get_logger().info("[DEMO] Desk demo skipped (none)")
+            return
 
-        if self.log:
-            self.log.log_event({'type': 'demo_end', 'room': 'desk'})
+        for i in range(passes):
+            self.node.get_logger().info(f"[DEMO] Desk wipe pass {i+1}/{passes}")
+            time.sleep(1.0)
 
-    def bed_demo(self, arrangement: str, eff: Dict[str, Any]) -> None:
-        self.say(f"I will move the pillow to the {arrangement} of the bed.")
-        if self.log:
-            self.log.log_event({'type': 'demo_start', 'room': 'bed', 'pillow_arrangement': arrangement, 'effective': eff})
+        self.node.get_logger().info("[DEMO] Desk demo complete")
 
-        # placeholder gesture
-        self._sleep(1.5)
+    def bed_demo(self, arrangement: str) -> None:
+        arrangement = (arrangement or "top").lower().strip()
+        self.node.get_logger().info(f"[DEMO] Bed demo start arrangement={arrangement}")
+        time.sleep(2.0)
+        self.node.get_logger().info("[DEMO] Bed demo complete")
 
-        if self.log:
-            self.log.log_event({'type': 'demo_end', 'room': 'bed'})
-
-    def kitchen_demo(self, snack: str, eff: Dict[str, Any]) -> None:
-        self.say(f"I will retrieve {snack} and present it.")
-        if self.log:
-            self.log.log_event({'type': 'demo_start', 'room': 'kitchen', 'snack_preference': snack, 'effective': eff})
-
-        # placeholder: reach -> grasp -> present
-        self._sleep(2.0)
-        self.say(f"Here you go: {snack}.")
-        self._sleep(0.5)
-
-        if self.log:
-            self.log.log_event({'type': 'demo_end', 'room': 'kitchen'})
+    def kitchen_demo(self, snack: str) -> None:
+        snack = (snack or "doritos").lower().strip()
+        self.node.get_logger().info(f"[DEMO] Kitchen demo start snack={snack}")
+        time.sleep(2.0)
+        self.node.get_logger().info("[DEMO] Kitchen demo complete")
