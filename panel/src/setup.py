@@ -18,7 +18,6 @@ setup(
     maintainer_email='example@example.com',
     description='Deterministic, Tier-1 (manual station) study controller for Stretch 3 on ROS 2.',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
     "console_scripts": [
         "study_engine = stretch_study.study_engine:main",
