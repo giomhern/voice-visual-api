@@ -87,6 +87,12 @@ class VoiceAssistantNode(Node):
         self.pub_event = self.create_publisher(String, self.event_topic, 10)
         self.sub_prompt = self.create_subscription(String, self.prompt_topic, self._on_prompt, 10)
 
+        self.sub_speech_status = self.create_subscription(
+            String, "/speech_status", self._on_speech_status, 10
+        )
+        self._speech_active = False
+
+
         # State
         self.history: List[Dict[str, str]] = []
         self.current_prompt: Optional[str] = None
@@ -130,6 +136,29 @@ class VoiceAssistantNode(Node):
             threading.Thread(target=self._listen_loop, daemon=True).start()
 
     # ----------------- Speech + STT gating -----------------
+
+    def _on_speech_status(self, msg: String):
+        state = (msg.data or "").strip().lower()
+        if state == "start":
+            self._speech_active = True
+            # hard mute while robot is speaking
+            self._mute_until = time.time() + 3600.0
+            if self.debug_log:
+                self.get_logger().info("[TURNTAKE] speech start -> STT muted")
+        elif state == "done":
+            self._speech_active = False
+            # unmute immediately after done
+            self._mute_until = 0.0
+            # restart STT cleanly so it begins listening right now
+            try:
+                if hasattr(self.recorder, "abort"):
+                    self.recorder.abort()
+                if hasattr(self.recorder, "start"):
+                    self.recorder.start()
+            except Exception:
+                pass
+            if self.debug_log:
+                self.get_logger().info("[TURNTAKE] speech done -> STT unmuted")
 
     def _after_speak_reset_stt(self):
         """After speaking, wait a cooldown then restart STT to avoid stuck recorder / echo."""
@@ -180,10 +209,6 @@ class VoiceAssistantNode(Node):
             ensure_ascii=False,
         )
         self.pub_speech.publish(msg)
-
-        # Mute STT briefly after speaking (prevents self-transcription)
-        self._mute_until = time.time() + self.listen_cooldown_s
-        self._after_speak_reset_stt()
 
         if self.debug_log:
             self.get_logger().info(f"[SPEECH_OUT] {text[:120]}")

@@ -3,7 +3,7 @@ import json
 import threading
 from queue import Queue, Empty
 from typing import Any, Dict, Optional
-
+import time
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -67,6 +67,7 @@ class SpeechNode(Node):
         self._stop_flag = threading.Event()
         self._worker = threading.Thread(target=self._worker_loop, daemon=True)
         self._worker.start()
+        self.pub_status = self.create_publisher(String, "/speech_status", 10)
 
         self.sub = self.create_subscription(String, self.topic_in, self._on_msg, 10)
         self.get_logger().info(f"[SPEECH] Ready. Subscribed to {self.topic_in}")
@@ -78,6 +79,11 @@ class SpeechNode(Node):
         except Exception:
             pass
         super().destroy_node()
+
+    def _publish_status(self, state: str):
+        msg = String()
+        msg.data = state
+        self.pub_status.publish(msg)
 
     def _on_msg(self, msg: String):
         try:
@@ -123,10 +129,11 @@ class SpeechNode(Node):
                 continue
 
             try:
+                self._publish_status("start")
                 self._speak_kokoro(job["text"], voice=job["voice"], volume=job["volume"])
-            except Exception as e:
-                self.get_logger().error(f"[SPEECH] Kokoro failed: {e}")
-
+            finally:
+                # Always publish done (even if playback errors) so listener can resume
+                self._publish_status("done")
     def _speak_kokoro(self, text: str, voice: str, volume: int):
         # Generate audio chunks
         gen = self.pipeline(text, voice=voice)
