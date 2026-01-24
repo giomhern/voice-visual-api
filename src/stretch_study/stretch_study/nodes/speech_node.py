@@ -1,117 +1,155 @@
+#!/usr/bin/env python3
 import json
-import queue
 import threading
-import time
+from queue import Queue, Empty
+from typing import Any, Dict, Optional
 
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 
-from stretch_study.capabilities.audio import say_text, set_volume
+# Kokoro + playback
+import numpy as np
+import sounddevice as sd
+from kokoro import KPipeline
+
+
+def clamp_int(x: Any, lo: int, hi: int, default: int) -> int:
+    try:
+        v = int(x)
+    except Exception:
+        return default
+    return max(lo, min(hi, v))
 
 
 class SpeechNode(Node):
-    """Speak JSON requests on /speech_request using local TTS (pyttsx3/espeak-ng)."""
+    """
+    Subscribes to /speech_request (std_msgs/String containing JSON):
+      {
+        "text": "hello",
+        "volume": 0..100,
+        "rate": 170,              # accepted but not strongly supported by kokoro (see note)
+        "voice": "af_heart",
+        "interrupt": true|false
+      }
+
+    Uses Kokoro TTS and plays audio through sounddevice.
+    """
 
     def __init__(self):
         super().__init__("stretch_study_speech")
 
-        self.declare_parameter("speech.topic_in", "/speech_request")
-        self.declare_parameter("speech.topic_out", "/speech_status")
-        self.declare_parameter("speech.default_volume", 60)
-        self.declare_parameter("speech.default_rate", 170)
-        self.declare_parameter("speech.default_voice", "auto")
-        self.declare_parameter("speech.queue_size", 20)
+        # Topics
+        self.declare_parameter("topics.speech_in", "/speech_request")
 
-        self.topic_in = str(self.get_parameter("speech.topic_in").value)
-        self.topic_out = str(self.get_parameter("speech.topic_out").value)
+        # Kokoro defaults
+        self.declare_parameter("kokoro.lang_code", "a")  # Kokoro uses lang codes like "a"
+        self.declare_parameter("kokoro.default_voice", "af_heart")
+        self.declare_parameter("kokoro.sample_rate", 24000)
 
-        self.default_volume = int(self.get_parameter("speech.default_volume").value)
-        self.default_rate = int(self.get_parameter("speech.default_rate").value)
-        self.default_voice = str(self.get_parameter("speech.default_voice").value)
+        # Audio output device
+        # If you want a specific device, set audio.device to an int device index from sd.query_devices()
+        self.declare_parameter("audio.device", -1)
 
-        qsize = int(self.get_parameter("speech.queue_size").value)
-        self._q: queue.Queue[dict] = queue.Queue(maxsize=qsize)
+        self.topic_in = str(self.get_parameter("topics.speech_in").value)
+        self.lang_code = str(self.get_parameter("kokoro.lang_code").value)
+        self.default_voice = str(self.get_parameter("kokoro.default_voice").value)
+        self.sample_rate = int(self.get_parameter("kokoro.sample_rate").value)
+        self.audio_device = int(self.get_parameter("audio.device").value)
 
-        self.pub_status = self.create_publisher(String, self.topic_out, 10)
-        self.sub_req = self.create_subscription(String, self.topic_in, self._on_req, 10)
+        # Load pipeline once
+        self.get_logger().info("[SPEECH] Loading Kokoro pipeline...")
+        self.pipeline = KPipeline(lang_code=self.lang_code)
+        self.get_logger().info("[SPEECH] Kokoro pipeline loaded.")
 
-        self._stop = threading.Event()
-        self._worker = threading.Thread(target=self._loop, daemon=True)
+        # Playback worker queue
+        self.q: Queue[Dict[str, Any]] = Queue()
+        self._stop_flag = threading.Event()
+        self._worker = threading.Thread(target=self._worker_loop, daemon=True)
         self._worker.start()
 
-        self.get_logger().info(f"SpeechNode ready. Listening on {self.topic_in}")
+        self.sub = self.create_subscription(String, self.topic_in, self._on_msg, 10)
+        self.get_logger().info(f"[SPEECH] Ready. Subscribed to {self.topic_in}")
 
-    def _publish_status(self, status: dict):
-        msg = String()
-        msg.data = json.dumps(status, ensure_ascii=False)
-        self.pub_status.publish(msg)
-
-    def _on_req(self, msg: String):
+    def destroy_node(self):
+        self._stop_flag.set()
         try:
-            req = json.loads(msg.data)
+            sd.stop()
         except Exception:
-            req = {"text": msg.data}
+            pass
+        super().destroy_node()
 
-        text = (req.get("text") or "").strip()
+    def _on_msg(self, msg: String):
+        try:
+            payload = json.loads(msg.data)
+        except Exception as e:
+            self.get_logger().error(f"[SPEECH] Bad JSON on {self.topic_in}: {e}")
+            return
+
+        text = str(payload.get("text", "")).strip()
         if not text:
             return
 
-        interrupt = bool(req.get("interrupt", False))
+        volume = clamp_int(payload.get("volume", 60), 0, 100, 60)
+        voice = str(payload.get("voice", self.default_voice)).strip() or self.default_voice
+        interrupt = bool(payload.get("interrupt", False))
+
+        # NOTE: Kokoro does not expose a clean "rate" control like espeak.
+        # We'll accept it but not apply it (to keep audio natural).
+        rate = payload.get("rate", None)
+
         if interrupt:
-            while not self._q.empty():
-                try:
-                    self._q.get_nowait()
-                except Exception:
-                    break
-
-        req["text"] = text
-        req.setdefault("volume", self.default_volume)
-        req.setdefault("rate", self.default_rate)
-        req.setdefault("voice", self.default_voice)
-        req.setdefault("gain", None)
-
-        try:
-            self._q.put_nowait(req)
-            self.get_logger().info(f"[SPEECH] enqueued: {text[:100]}")
-        except queue.Full:
-            self.get_logger().warn("[SPEECH] queue full; dropping utterance")
-            self._publish_status({"type": "dropped", "reason": "queue_full", "text": text})
-
-    def _loop(self):
-        while not self._stop.is_set():
+            # Stop current playback immediately and clear queue
             try:
-                req = self._q.get(timeout=0.1)
-            except queue.Empty:
+                sd.stop()
+            except Exception:
+                pass
+            self._drain_queue()
+
+        self.q.put({"text": text, "volume": volume, "voice": voice, "rate": rate})
+
+        self.get_logger().info(f"[SPEECH] queued voice={voice} vol={volume} text='{text[:60]}'")
+
+    def _drain_queue(self):
+        try:
+            while True:
+                self.q.get_nowait()
+        except Empty:
+            pass
+
+    def _worker_loop(self):
+        while not self._stop_flag.is_set() and rclpy.ok():
+            try:
+                job = self.q.get(timeout=0.1)
+            except Empty:
                 continue
 
-            text = req["text"]
-            vol = req.get("volume")
-            rate = req.get("rate")
-            voice = req.get("voice")
-            gain = req.get("gain")
+            try:
+                self._speak_kokoro(job["text"], voice=job["voice"], volume=job["volume"])
+            except Exception as e:
+                self.get_logger().error(f"[SPEECH] Kokoro failed: {e}")
 
-            self._publish_status({"type": "start", "text": text})
-            self.get_logger().info(f"[SPEECH] speaking: {text[:120]}")
-            if vol is not None:
-                ok, msg, meta = set_volume(int(vol))
-                self.get_logger().info(f"[SPEECH] set_volume ok={ok} msg={msg}")
-                self._publish_status({"type": "volume", "ok": ok, "msg": msg, "meta": meta, "volume": int(vol)})
+    def _speak_kokoro(self, text: str, voice: str, volume: int):
+        # Generate audio chunks
+        gen = self.pipeline(text, voice=voice)
 
-            ok, msg, meta = say_text(text, rate=rate, voice=voice, local_gain=gain)
-            self._publish_status({"type": "done", "ok": ok, "msg": msg, "meta": meta, "text": text})
+        vol = float(volume) / 100.0
+        vol = max(0.0, min(1.0, vol))
 
-            if ok:
-                self.get_logger().info("[SPEECH] done")
-            else:
-                self.get_logger().error(f"[SPEECH] failed: {msg}")
+        # Choose device
+        if self.audio_device >= 0:
+            sd.default.device = self.audio_device
 
-            time.sleep(0.05)
+        chunk_count = 0
+        for _, _, audio in gen:
+            chunk_count += 1
+            # audio is typically a numpy array float32
+            a = np.asarray(audio, dtype=np.float32) * vol
 
-    def destroy_node(self):
-        self._stop.set()
-        super().destroy_node()
+            sd.play(a, samplerate=self.sample_rate)
+            sd.wait()
 
+        self.get_logger().info(f"[SPEECH] done (chunks={chunk_count}) voice={voice}")
 
 def main():
     rclpy.init()
@@ -123,3 +161,7 @@ def main():
     finally:
         node.destroy_node()
         rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
