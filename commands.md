@@ -106,3 +106,7 @@ def build_script():
 
     ros2 topic pub --once /speech_request std_msgs/msg/String \
 '{"data":"{\"text\":\"Hello, I am using af_heart.\",\"volume\":70,\"voice\":\"af_heart\",\"interrupt\":true}"}'
+
+ros2 pkg executables stretch_study | grep speech
+grep -R "kokoro-82m" -n ~/voice-visual-api/stretch_loop/src/stretch_study | head
+grep -R "Kokoro-82M" -n ~/voice-visual-api/stretch_loop/src/stretch_study | head
