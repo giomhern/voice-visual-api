@@ -344,3 +344,292 @@ aplay /tmp/test.wav
 [INFO] [joint_state_publisher-1]: process has finished cleanly [pid 12052]
 [sllidar_node-4] [INFO] [1769546861.329507892] [sllidar_node]: Stop motor
 [INFO] [sllidar_node-4]: process has finished cleanly [pid 12058]
+
+hello-robot@stretch-se3-3103:~$ lsusb
+Bus 004 Device 003: ID 05e3:0626 Genesys Logic, Inc. USB3.1 Hub
+Bus 004 Device 002: ID 0bda:0411 Realtek Semiconductor Corp. Hub
+Bus 004 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 003 Device 005: ID 2341:804d Arduino SA Hello Stepper
+Bus 003 Device 022: ID 045e:028e Microsoft Corp. Xbox360 Controller
+Bus 003 Device 021: ID 046d:c52b Logitech, Inc. Unifying Receiver
+Bus 003 Device 020: ID 2109:2817 VIA Labs, Inc. USB2.0 Hub             
+Bus 003 Device 015: ID 2341:804d Arduino SA Hello Stepper
+Bus 003 Device 012: ID 10c4:ea60 Silicon Labs CP210x UART Bridge
+Bus 003 Device 019: ID 2341:804d Arduino SA Hello Wacc
+Bus 003 Device 018: ID 0403:6001 Future Technology Devices International, Ltd FT232 Serial (UART) IC
+Bus 003 Device 017: ID 8086:0b5b Intel Corp. Intel(R) RealSense(TM) Depth Camera 405 
+Bus 003 Device 016: ID 1a40:0101 Terminus Technology Inc. Hub
+Bus 003 Device 013: ID 2341:804d Arduino SA Hello Stepper
+Bus 003 Device 010: ID 1a40:0101 Terminus Technology Inc. Hub
+Bus 003 Device 006: ID 2341:804d Arduino SA Hello Stepper
+Bus 003 Device 003: ID 05e3:0610 Genesys Logic, Inc. Hub
+Bus 003 Device 009: ID 8087:0033 Intel Corp. 
+Bus 003 Device 007: ID 2341:804d Arduino SA Hello Pimu
+Bus 003 Device 014: ID 2886:0018 Seeed Technology Co., Ltd. ReSpeaker 4 Mic Array (UAC1.0)
+Bus 003 Device 011: ID 0403:6001 Future Technology Devices International, Ltd FT232 Serial (UART) IC
+Bus 003 Device 008: ID 0c45:6366 Microdia Webcam Vitade AF
+Bus 003 Device 004: ID 1a40:0101 Terminus Technology Inc. Hub
+Bus 003 Device 002: ID 0bda:5411 Realtek Semiconductor Corp. RTS5411 Hub
+Bus 003 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+Bus 002 Device 003: ID 2109:0817 VIA Labs, Inc. USB3.0 Hub             
+Bus 002 Device 002: ID 8086:0b3a Intel Corp. Intel(R) RealSense(TM) Depth Camera 435if
+Bus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+hello-robot@stretch-se3-3103:~$ lsusb -t
+/:  Bus 04.Port 1: Dev 1, Class=root_hub, Driver=xhci_hcd/4p, 10000M
+    |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/4p, 5000M
+    |__ Port 2: Dev 3, If 0, Class=Hub, Driver=hub/4p, 5000M
+/:  Bus 03.Port 1: Dev 1, Class=root_hub, Driver=xhci_hcd/12p, 480M
+    |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/5p, 480M
+        |__ Port 2: Dev 7, If 1, Class=CDC Data, Driver=cdc_acm, 12M
+        |__ Port 2: Dev 7, If 0, Class=Communications, Driver=cdc_acm, 12M
+        |__ Port 1: Dev 4, If 0, Class=Hub, Driver=hub/4p, 480M
+            |__ Port 3: Dev 14, If 4, Class=Application Specific Interface, Driver=, 12M
+            |__ Port 3: Dev 14, If 2, Class=Audio, Driver=snd-usb-audio, 12M
+            |__ Port 3: Dev 14, If 0, Class=Audio, Driver=snd-usb-audio, 12M
+            |__ Port 3: Dev 14, If 3, Class=Vendor Specific Class, Driver=, 12M
+            |__ Port 3: Dev 14, If 1, Class=Audio, Driver=snd-usb-audio, 12M
+            |__ Port 1: Dev 8, If 1, Class=Video, Driver=uvcvideo, 480M
+            |__ Port 1: Dev 8, If 0, Class=Video, Driver=uvcvideo, 480M
+            |__ Port 2: Dev 11, If 0, Class=Vendor Specific Class, Driver=ftdi_sio, 12M
+    |__ Port 2: Dev 3, If 0, Class=Hub, Driver=hub/4p, 480M
+        |__ Port 1: Dev 6, If 1, Class=CDC Data, Driver=cdc_acm, 12M
+        |__ Port 1: Dev 6, If 0, Class=Communications, Driver=cdc_acm, 12M
+        |__ Port 2: Dev 10, If 0, Class=Hub, Driver=hub/4p, 480M
+            |__ Port 3: Dev 16, If 0, Class=Hub, Driver=hub/4p, 480M
+                |__ Port 3: Dev 19, If 1, Class=CDC Data, Driver=cdc_acm, 12M
+                |__ Port 3: Dev 19, If 0, Class=Communications, Driver=cdc_acm, 12M
+                |__ Port 1: Dev 17, If 2, Class=Video, Driver=uvcvideo, 480M
+                |__ Port 1: Dev 17, If 0, Class=Video, Driver=uvcvideo, 480M
+                |__ Port 1: Dev 17, If 3, Class=Video, Driver=uvcvideo, 480M
+                |__ Port 1: Dev 17, If 1, Class=Video, Driver=uvcvideo, 480M
+                |__ Port 2: Dev 18, If 0, Class=Vendor Specific Class, Driver=ftdi_sio, 12M
+            |__ Port 2: Dev 13, If 1, Class=CDC Data, Driver=cdc_acm, 12M
+            |__ Port 2: Dev 13, If 0, Class=Communications, Driver=cdc_acm, 12M
+        |__ Port 3: Dev 12, If 0, Class=Vendor Specific Class, Driver=cp210x, 12M
+        |__ Port 4: Dev 15, If 1, Class=CDC Data, Driver=cdc_acm, 12M
+        |__ Port 4: Dev 15, If 0, Class=Communications, Driver=cdc_acm, 12M
+    |__ Port 5: Dev 20, If 0, Class=Hub, Driver=hub/4p, 480M
+        |__ Port 3: Dev 22, If 0, Class=Vendor Specific Class, Driver=xpad, 12M
+        |__ Port 1: Dev 21, If 1, Class=Human Interface Device, Driver=usbhid, 12M
+        |__ Port 1: Dev 21, If 2, Class=Human Interface Device, Driver=usbhid, 12M
+        |__ Port 1: Dev 21, If 0, Class=Human Interface Device, Driver=usbhid, 12M
+    |__ Port 7: Dev 5, If 0, Class=Communications, Driver=cdc_acm, 12M
+    |__ Port 7: Dev 5, If 1, Class=CDC Data, Driver=cdc_acm, 12M
+    |__ Port 10: Dev 9, If 0, Class=Wireless, Driver=btusb, 12M
+    |__ Port 10: Dev 9, If 1, Class=Wireless, Driver=btusb, 12M
+/:  Bus 02.Port 1: Dev 1, Class=root_hub, Driver=xhci_hcd/3p, 20000M/x2
+    |__ Port 1: Dev 2, If 4, Class=Video, Driver=uvcvideo, 5000M
+    |__ Port 1: Dev 2, If 2, Class=Video, Driver=uvcvideo, 5000M
+    |__ Port 1: Dev 2, If 0, Class=Video, Driver=uvcvideo, 5000M
+    |__ Port 1: Dev 2, If 5, Class=Human Interface Device, Driver=usbhid, 5000M
+    |__ Port 1: Dev 2, If 3, Class=Video, Driver=uvcvideo, 5000M
+    |__ Port 1: Dev 2, If 1, Class=Video, Driver=uvcvideo, 5000M
+    |__ Port 3: Dev 3, If 0, Class=Hub, Driver=hub/4p, 5000M
+/:  Bus 01.Port 1: Dev 1, Class=root_hub, Driver=xhci_hcd/1p, 480M
+hello-robot@stretch-se3-3103:~$  rs-enumerate-devices
+Device info: 
+    Name                          : 	Intel RealSense D435IF
+    Serial Number                 : 	246422071246
+    Firmware Version              : 	5.16.0.1
+    Recommended Firmware Version  : 	5.16.0.1
+    Physical Port                 : 	/sys/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:1.0/video4linux/video0
+    Debug Op Code                 : 	15
+    Advanced Mode                 : 	YES
+    Product Id                    : 	0B3A
+    Camera Locked                 : 	YES
+    Usb Type Descriptor           : 	3.2
+    Product Line                  : 	D400
+    Asic Serial Number            : 	337543061857
+    Firmware Update Id            : 	337543061857
+    Dfu Device Path               : 	
+
+Stream Profiles supported by Stereo Module
+ Supported modes:
+    STREAM      RESOLUTION     FORMAT      FPS
+    Infrared 1  1280x800       Y16         @ 25/15 Hz
+    Infrared 1      |          Y8          @ 30/15 Hz
+    Infrared 1  1280x720       Y8          @ 30/15/6 Hz
+    Infrared 1   848x480       Y8          @ 90/60/30/15/6 Hz
+    Infrared 1   848x100       Y8          @ 300/100 Hz
+    Infrared 1   640x480       Y8          @ 90/60/30/15/6 Hz
+    Infrared 1   640x400       Y16         @ 25/15 Hz
+    Infrared 1   640x360       Y8          @ 90/60/30/15/6 Hz
+    Infrared 1   480x270       Y8          @ 90/60/30/15/6 Hz
+    Infrared 1   424x240       Y8          @ 90/60/30/15/6 Hz
+    Infrared 2  1280x800       Y16         @ 25/15 Hz
+    Infrared 2      |          Y8          @ 30/15 Hz
+    Infrared 2  1280x720       Y8          @ 30/15/6 Hz
+    Infrared 2   848x480       Y8          @ 90/60/30/15/6 Hz
+    Infrared 2   848x100       Y8          @ 300/100 Hz
+    Infrared 2   640x480       Y8          @ 90/60/30/15/6 Hz
+    Infrared 2   640x400       Y16         @ 25/15 Hz
+    Infrared 2   640x360       Y8          @ 90/60/30/15/6 Hz
+    Infrared 2   480x270       Y8          @ 90/60/30/15/6 Hz
+    Infrared 2   424x240       Y8          @ 90/60/30/15/6 Hz
+    Depth       1280x720       Z16         @ 30/15/6 Hz
+    Depth        848x480       Z16         @ 90/60/30/15/6 Hz
+    Depth        848x100       Z16         @ 300/100 Hz
+    Depth        640x480       Z16         @ 90/60/30/15/6 Hz
+    Depth        640x360       Z16         @ 90/60/30/15/6 Hz
+    Depth        480x270       Z16         @ 90/60/30/15/6 Hz
+    Depth        424x240       Z16         @ 90/60/30/15/6 Hz
+    Depth        256x144       Z16         @ 300/90 Hz
+
+Stream Profiles supported by RGB Camera
+ Supported modes:
+    STREAM      RESOLUTION     FORMAT      FPS
+    Color       1920x1080      RGB8        @ 30/15/6 Hz
+    Color           |          Y8          @ 30/15/6 Hz
+    Color           |          BGRA8       @ 30/15/6 Hz
+    Color           |          RGBA8       @ 30/15/6 Hz
+    Color           |          BGR8        @ 30/15/6 Hz
+    Color           |          YUYV        @ 30/15/6 Hz
+    Color       1280x720       RGB8        @ 30/15/6 Hz
+    Color           |          Y8          @ 30/15/6 Hz
+    Color           |          BGRA8       @ 30/15/6 Hz
+    Color           |          RGBA8       @ 30/15/6 Hz
+    Color           |          BGR8        @ 30/15/6 Hz
+    Color           |          YUYV        @ 30/15/6 Hz
+    Color        960x540       RGB8        @ 60/30/15/6 Hz
+    Color           |          Y8          @ 60/30/15/6 Hz
+    Color           |          BGRA8       @ 60/30/15/6 Hz
+    Color           |          RGBA8       @ 60/30/15/6 Hz
+    Color           |          BGR8        @ 60/30/15/6 Hz
+    Color           |          YUYV        @ 60/30/15/6 Hz
+    Color        848x480       RGB8        @ 60/30/15/6 Hz
+    Color           |          Y8          @ 60/30/15/6 Hz
+    Color           |          BGRA8       @ 60/30/15/6 Hz
+    Color           |          RGBA8       @ 60/30/15/6 Hz
+    Color           |          BGR8        @ 60/30/15/6 Hz
+    Color           |          YUYV        @ 60/30/15/6 Hz
+    Color        640x480       RGB8        @ 60/30/15/6 Hz
+    Color           |          Y8          @ 60/30/15/6 Hz
+    Color           |          BGRA8       @ 60/30/15/6 Hz
+    Color           |          RGBA8       @ 60/30/15/6 Hz
+    Color           |          BGR8        @ 60/30/15/6 Hz
+    Color           |          YUYV        @ 60/30/15/6 Hz
+    Color        640x360       RGB8        @ 60/30/15/6 Hz
+    Color           |          Y8          @ 60/30/15/6 Hz
+    Color           |          BGRA8       @ 60/30/15/6 Hz
+    Color           |          RGBA8       @ 60/30/15/6 Hz
+    Color           |          BGR8        @ 60/30/15/6 Hz
+    Color           |          YUYV        @ 60/30/15/6 Hz
+    Color        424x240       RGB8        @ 60/30/15/6 Hz
+    Color           |          Y8          @ 60/30/15/6 Hz
+    Color           |          BGRA8       @ 60/30/15/6 Hz
+    Color           |          RGBA8       @ 60/30/15/6 Hz
+    Color           |          BGR8        @ 60/30/15/6 Hz
+    Color           |          YUYV        @ 60/30/15/6 Hz
+    Color        320x240       RGB8        @ 60/30/6 Hz
+    Color           |          Y8          @ 60/30/6 Hz
+    Color           |          BGRA8       @ 60/30/6 Hz
+    Color           |          RGBA8       @ 60/30/6 Hz
+    Color           |          BGR8        @ 60/30/6 Hz
+    Color           |          YUYV        @ 60/30/6 Hz
+    Color        320x180       RGB8        @ 60/30/6 Hz
+    Color           |          Y8          @ 60/30/6 Hz
+    Color           |          BGRA8       @ 60/30/6 Hz
+    Color           |          RGBA8       @ 60/30/6 Hz
+    Color           |          BGR8        @ 60/30/6 Hz
+    Color           |          YUYV        @ 60/30/6 Hz
+
+Stream Profiles supported by Motion Module
+ Supported modes:
+    STREAM      FORMAT         FPS
+    Accel       MOTION_XYZ32F  @ 200/100 Hz
+    Gyro        MOTION_XYZ32F  @ 400/200 Hz
+
+Device info: 
+    Name                          : 	Intel RealSense D405
+    Serial Number                 : 	218622272842
+    Firmware Version              : 	5.12.14.100
+    Recommended Firmware Version  : 	5.16.0.1
+    Physical Port                 : 	/sys/devices/pci0000:00/0000:00:14.0/usb3/3-2/3-2.2/3-2.2.3/3-2.2.3.1/3-2.2.3.1:1.0/video4linux/video8
+    Debug Op Code                 : 	15
+    Advanced Mode                 : 	YES
+    Product Id                    : 	0B5B
+    Camera Locked                 : 	YES
+    Usb Type Descriptor           : 	2.1
+    Product Line                  : 	D400
+    Asic Serial Number            : 	219323071944
+    Firmware Update Id            : 	219323071944
+    Dfu Device Path               : 	
+
+Stream Profiles supported by Stereo Module
+ Supported modes:
+    STREAM      RESOLUTION     FORMAT      FPS
+    Infrared    1280x720       UYVY        @ 5 Hz
+    Infrared        |          BGRA8       @ 5 Hz
+    Infrared        |          RGBA8       @ 5 Hz
+    Infrared        |          BGR8        @ 5 Hz
+    Infrared        |          RGB8        @ 5 Hz
+    Infrared     848x480       UYVY        @ 10/5 Hz
+    Infrared        |          BGRA8       @ 10/5 Hz
+    Infrared        |          RGBA8       @ 10/5 Hz
+    Infrared        |          BGR8        @ 10/5 Hz
+    Infrared        |          RGB8        @ 10/5 Hz
+    Infrared     640x480       UYVY        @ 30/15/5 Hz
+    Infrared        |          BGRA8       @ 30/15/5 Hz
+    Infrared        |          RGBA8       @ 30/15/5 Hz
+    Infrared        |          BGR8        @ 30/15/5 Hz
+    Infrared        |          RGB8        @ 30/15/5 Hz
+    Infrared     640x360       UYVY        @ 30 Hz
+    Infrared        |          BGRA8       @ 30 Hz
+    Infrared        |          RGBA8       @ 30 Hz
+    Infrared        |          BGR8        @ 30 Hz
+    Infrared        |          RGB8        @ 30 Hz
+    Infrared     480x270       UYVY        @ 60/30/15/5 Hz
+    Infrared        |          BGRA8       @ 60/30/15/5 Hz
+    Infrared        |          RGBA8       @ 60/30/15/5 Hz
+    Infrared        |          BGR8        @ 60/30/15/5 Hz
+    Infrared        |          RGB8        @ 60/30/15/5 Hz
+    Infrared     256x144       UYVY        @ 90 Hz
+    Infrared        |          BGRA8       @ 90 Hz
+    Infrared        |          RGBA8       @ 90 Hz
+    Infrared        |          BGR8        @ 90 Hz
+    Infrared        |          RGB8        @ 90 Hz
+    Infrared 1  1280x720       Y8          @ 5 Hz
+    Infrared 1   848x480       Y8          @ 10/5 Hz
+    Infrared 1   640x480       Y8          @ 30/15/5 Hz
+    Infrared 1   640x360       Y8          @ 30 Hz
+    Infrared 1   480x270       Y8          @ 60/30/15/5 Hz
+    Infrared 1   256x144       Y8          @ 90 Hz
+    Color       1280x720       RGB8        @ 15/10/5 Hz
+    Color           |          Y8          @ 15/10/5 Hz
+    Color           |          BGRA8       @ 15/10/5 Hz
+    Color           |          RGBA8       @ 15/10/5 Hz
+    Color           |          BGR8        @ 15/10/5 Hz
+    Color           |          YUYV        @ 15/10/5 Hz
+    Color        848x480       RGB8        @ 10/5 Hz
+    Color           |          Y8          @ 10/5 Hz
+    Color           |          BGRA8       @ 10/5 Hz
+    Color           |          RGBA8       @ 10/5 Hz
+    Color           |          BGR8        @ 10/5 Hz
+    Color           |          YUYV        @ 10/5 Hz
+    Color        640x480       RGB8        @ 30/15/5 Hz
+    Color           |          Y8          @ 30/15/5 Hz
+    Color           |          BGRA8       @ 30/15/5 Hz
+    Color           |          RGBA8       @ 30/15/5 Hz
+    Color           |          BGR8        @ 30/15/5 Hz
+    Color           |          YUYV        @ 30/15/5 Hz
+    Color        480x270       RGB8        @ 30/15/5 Hz
+    Color           |          Y8          @ 30/15/5 Hz
+    Color           |          BGRA8       @ 30/15/5 Hz
+    Color           |          RGBA8       @ 30/15/5 Hz
+    Color           |          BGR8        @ 30/15/5 Hz
+    Color           |          YUYV        @ 30/15/5 Hz
+    Color        424x240       RGB8        @ 60/30/15/5 Hz
+    Color           |          Y8          @ 60/30/15/5 Hz
+    Color           |          BGRA8       @ 60/30/15/5 Hz
+    Color           |          RGBA8       @ 60/30/15/5 Hz
+    Color           |          BGR8        @ 60/30/15/5 Hz
+    Color           |          YUYV        @ 60/30/15/5 Hz
+    Depth       1280x720       Z16         @ 5 Hz
+    Depth        848x480       Z16         @ 10/5 Hz
+    Depth        640x480       Z16         @ 30/15/5 Hz
+    Depth        640x360       Z16         @ 30 Hz
+    Depth        480x270       Z16         @ 60/30/15/5 Hz
+    Depth        256x144       Z16         @ 90 Hz
+
+hello-robot@stretch-se3-3103:~$ 
