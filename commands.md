@@ -198,3 +198,149 @@ parecord --rate=16000 --channels=1 --format=s16le /tmp/test.wav &
 sleep 5
 kill $!
 aplay /tmp/test.wav
+
+
+ All log files can be found below /home/hello-robot/.ros/log/2026-01-27-14-47-31-727095-stretch-se3-3103-12032
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [stretch_driver-3]: process started with pid [12056]
+[INFO] [joint_state_publisher-1]: process started with pid [12052]
+[INFO] [robot_state_publisher-2]: process started with pid [12054]
+[INFO] [sllidar_node-4]: process started with pid [12058]
+[INFO] [scan_to_scan_filter_chain-5]: process started with pid [12060]
+[INFO] [rviz2-6]: process started with pid [12062]
+[INFO] [sync_slam_toolbox_node-7]: process started with pid [12064]
+[sllidar_node-4] [INFO] [1769546852.113209761] [sllidar_node]: SLLidar running on ROS2 package SLLidar.ROS2 SDK Version:1.0.1, SLLIDAR SDK Version:2.1.0
+[scan_to_scan_filter_chain-5] [INFO] [1769546852.120213276] [laser_filter]: In shadow configure done
+[scan_to_scan_filter_chain-5] [WARN] [1769546852.120543675] [rcl.logging_rosout]: Publisher already registered for provided node name. If this is due to multiple nodes with the same name then all logs for that logger name will go out over the existing publisher. As soon as any node with that name is destructed it will unregister the publisher, preventing any further logs for that name from being published on the rosout topic.
+[sllidar_node-4] [INFO] [1769546852.121061685] [sllidar_node]: SLLidar S/N: E0FDECF0C3E09ED2A0EA98F373254110
+[sllidar_node-4] [INFO] [1769546852.121140081] [sllidar_node]: Firmware Ver: 1.29
+[sllidar_node-4] [INFO] [1769546852.121150459] [sllidar_node]: Hardware Rev: 7
+[sllidar_node-4] [INFO] [1769546852.122720874] [sllidar_node]: SLLidar health status : 0
+[sllidar_node-4] [INFO] [1769546852.122760437] [sllidar_node]: SLLidar health status : OK.
+[scan_to_scan_filter_chain-5] [WARN] [1769546852.126881697] [rcl.logging_rosout]: Publisher already registered for provided node name. If this is due to multiple nodes with the same name then all logs for that logger name will go out over the existing publisher. As soon as any node with that name is destructed it will unregister the publisher, preventing any further logs for that name from being published on the rosout topic.
+[sync_slam_toolbox_node-7] [INFO] [1769546852.131335795] [slam_toolbox]: Node using stack size 40000000
+[sync_slam_toolbox_node-7] [INFO] [1769546852.194396346] [slam_toolbox]: Using solver plugin solver_plugins::CeresSolver
+[sync_slam_toolbox_node-7] [INFO] [1769546852.195994928] [slam_toolbox]: CeresSolver: Using SCHUR_JACOBI preconditioner.
+[sllidar_node-4] [INFO] [1769546852.316191149] [sllidar_node]: current scan mode: Boost, sample rate: 8 Khz, max_distance: 12.0 m, scan frequency:10.0 Hz, 
+[rviz2-6] [INFO] [1769546852.595648474] [rviz2]: Stereo is NOT SUPPORTED
+[rviz2-6] [INFO] [1769546852.595739098] [rviz2]: OpenGl version: 4.6 (GLSL 4.6)
+[rviz2-6] [INFO] [1769546852.622464502] [rviz2]: Stereo is NOT SUPPORTED
+[stretch_driver-3] [INFO] [1769546853.605603697] [stretch_driver]: For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.
+[stretch_driver-3] [INFO] [1769546853.605900076] [stretch_driver]: stretch_driver started
+[sync_slam_toolbox_node-7] [INFO] [1769546853.788613646] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546852.316 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546853.913599564] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546853.652 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546854.048542124] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546853.787 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546854.183824663] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546853.909 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546854.303750180] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546854.044 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546854.439038381] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546854.180 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546854.573655795] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546854.302 for reason 'discarding message because the queue is full'
+[stretch_driver-3] Another process is already using Stretch. Try running "stretch_free_robot_process.py"
+[stretch_driver-3] [FATAL] [1769546854.624987556] [stretch_driver]: Robot startup failed.
+[sync_slam_toolbox_node-7] [INFO] [1769546854.698725162] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546854.438 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546854.833873408] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546854.572 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546854.953572389] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546854.695 for reason 'discarding message because the queue is full'
+[INFO] [stretch_driver-3]: process has finished cleanly [pid 12056]
+[rviz2-6] [INFO] [1769546854.962659115] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546852.316 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546855.088779701] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546854.830 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546855.090707423] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546853.652 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546855.228856366] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546854.953 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546855.250572108] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546853.787 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546855.346851263] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546853.909 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546855.349084871] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546855.088 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546855.483859415] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546855.224 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546855.506943247] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546854.044 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546855.619364574] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546855.346 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546855.634888062] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546854.180 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546855.744315700] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546855.481 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546855.763000811] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546854.302 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546855.878699153] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546855.617 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546855.890816188] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546854.438 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546856.014201360] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546855.739 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546856.019562354] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546854.572 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546856.133878048] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546855.874 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546856.146747556] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546854.695 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546856.268640458] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546856.010 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546856.274957035] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546854.830 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546856.393697176] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546856.132 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546856.403194312] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546854.953 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546856.528590081] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546856.267 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546856.530538299] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546855.088 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546856.663554535] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546856.390 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546856.691010365] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546855.224 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546856.783832518] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546856.525 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546856.786905294] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546855.346 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546856.919000813] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546856.660 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546856.947148040] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546855.481 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546857.059093186] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546856.783 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546857.074846053] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546855.617 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546857.179085478] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546856.918 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546857.203498014] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546855.739 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546857.314053968] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546857.054 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546857.330807087] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546855.874 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546857.448597157] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546857.176 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546857.459361192] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546856.010 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546857.574156406] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546857.312 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546857.587683682] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546856.132 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546857.708764852] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546857.447 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546857.715476827] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546856.267 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546857.843261093] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546856.390 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546857.843818652] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546857.570 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546857.964125416] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546857.705 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546857.971000677] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546856.525 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546858.098608304] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546856.660 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546858.099090969] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546857.840 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546858.224420095] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546857.963 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546858.227607593] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546856.783 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546858.358961781] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546858.098 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546858.387130406] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546856.918 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546858.494062261] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546858.221 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546858.515165124] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546857.054 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546858.613836999] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546858.356 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546858.643014406] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546857.176 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546858.748669484] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546858.491 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546858.771425655] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546857.312 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546858.889164932] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546858.613 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546858.898958488] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546857.447 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546859.008726631] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546858.748 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546859.027215425] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546857.570 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546859.143892246] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546858.885 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546859.155270988] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546857.705 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546859.278594129] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546859.006 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546859.283278146] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546857.840 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546859.403655421] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546859.141 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546859.410571350] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546857.963 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546859.538744564] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546859.276 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546859.539415487] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546858.098 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546859.673970531] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546859.400 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546859.699512272] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546858.221 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546859.793636199] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546859.534 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546859.794859976] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546858.356 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546859.928692072] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546859.670 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546859.954678771] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546858.491 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546860.051318331] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546858.613 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546860.053883078] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546859.792 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546860.188820072] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546859.928 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546860.211342317] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546858.748 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546860.324019801] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546860.050 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546860.339501105] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546858.885 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546860.449009595] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546860.185 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546860.467069233] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546859.006 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546860.583822569] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546860.321 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546860.594762057] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546859.141 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546860.718635952] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546860.444 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546860.722875006] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546859.276 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546860.838917207] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546860.579 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546860.850716575] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546859.400 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546860.973758095] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546860.714 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546860.978892491] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546859.534 for reason 'discarding message because the queue is full'
+[sync_slam_toolbox_node-7] [INFO] [1769546861.109624638] [slam_toolbox]: Message Filter dropping message: frame 'laser' at time 1769546860.837 for reason 'discarding message because the queue is full'
+[rviz2-6] [INFO] [1769546861.139295982] [rviz]: Message Filter dropping message: frame 'laser' at time 1769546859.670 for reason 'discarding message because the queue is full'
+^C[rviz2-6] [INFO] [1769546861.142592302] [rclcpp]: signal_handler(signum=2)
+[scan_to_scan_filter_chain-5] [INFO] [1769546861.142602529] [rclcpp]: signal_handler(signum=2)
+[sync_slam_toolbox_node-7] [INFO] [1769546861.142662780] [rclcpp]: signal_handler(signum=2)
+[INFO] [robot_state_publisher-2]: process has finished cleanly [pid 12054]
+[INFO] [sync_slam_toolbox_node-7]: process has finished cleanly [pid 12064]
+[INFO] [scan_to_scan_filter_chain-5]: process has finished cleanly [pid 12060]
+[INFO] [joint_state_publisher-1]: process has finished cleanly [pid 12052]
+[sllidar_node-4] [INFO] [1769546861.329507892] [sllidar_node]: Stop motor
+[INFO] [sllidar_node-4]: process has finished cleanly [pid 12058]
