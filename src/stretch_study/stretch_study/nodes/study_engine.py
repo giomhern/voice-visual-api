@@ -409,8 +409,19 @@ class StudyEngine(Node):
         elif et == "advance":
             prev = self.step_idx
             self.step_idx = min(self.step_idx + 1, len(self.script) - 1)
-            self.get_logger().info(f"[TRANSITION] advance {prev} -> {self.step_idx}")
+            step = self.script[self.step_idx]
+
+            self.get_logger().info(f"[TRANSITION] advance {prev} -> {self.step_idx} id={step['id']}")
             self.publish_prompt()
+
+            # NEW: auto-nav when we enter a goto step
+            if step.get("expect") == "goto":
+                room = (step.get("room") or "").strip().lower()
+                if room in ALLOWED_ROOMS:
+                    self.get_logger().info(f"[AUTO_NAV] Entered goto step -> navigating to {room}")
+                    self._handle_arrive(room)   # re-use your existing logic
+                else:
+                    self.get_logger().warn(f"[AUTO_NAV] goto step has invalid room='{room}'")
 
         elif et == "arrive" and step.get("expect") == "arrive":
             room = (ev.get("room") or "").strip().lower()

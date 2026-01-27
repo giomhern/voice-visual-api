@@ -474,7 +474,12 @@ def build_script():
                 "Please walk with me and guide me. When we reach a station, tell me where we are."
             ),
         },
-
+        {
+            "id": "goto_desk",
+            "prompt": "Great. I’m going to drive to the Desk area now. Please stand clear.",
+            "expect": "goto",
+            "room": "desk"
+        },
         # ---- TOUR / ARRIVAL STEPS ----
         {"id": "arrive_desk", "prompt": "Please tell me when we are now at the Desk area.", "expect": "arrive"},
         {"id": "arrive_bed", "prompt": "Please tell me when we are now at the Bed area.", "expect": "arrive"},
