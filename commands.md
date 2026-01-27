@@ -13,3 +13,10 @@ curl -s http://127.0.0.1:11434/api/chat \
   ros2 run your_pkg voice_assistant_node.py --ros-args \
   -p ollama.url:=http://127.0.0.1:11434/api/chat \
   -p ollama.model:=llama3.1:8b
+
+
+  ros2 run stretch_study study_engine \
+  --ros-args \
+  -p nav.enable:=true \
+  -p nav.goals_yaml:=/absolute/path/to/goals.yaml \
+  -p motion.scaler_node:=/cmd_vel_scaler
