@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import time
 import threading
-from typing import Any, Dict, Optional
+import inspect
+from typing import Any, Dict
 
 import rclpy
 from rclpy.node import Node
@@ -10,15 +11,28 @@ from std_msgs.msg import String
 from RealtimeSTT import AudioToTextRecorder
 
 
+def filter_kwargs_for_callable(fn, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Keep only kwargs that are accepted by fn(**kwargs).
+    Works across different RealtimeSTT versions with different parameter names.
+    """
+    try:
+        sig = inspect.signature(fn)
+        accepted = set(sig.parameters.keys())
+        return {k: v for k, v in kwargs.items() if k in accepted}
+    except Exception:
+        # If signature introspection fails, return kwargs unchanged (best-effort)
+        return kwargs
+
+
 class StretchSTTNode(Node):
     """
-    Minimal, reliable STT ROS2 node for Stretch.
+    Minimal, reliable STT ROS2 node.
 
-    - Uses RealtimeSTT in PULL mode (text = recorder.text()) which matches the working test.
-    - Publishes recognized speech to /stt_text as std_msgs/String.
-    - Logs "[USER] ..." when it hears something.
-
-    This is intentionally "dumb" and stable: no TTS, no LLM, no state machine.
+    - Pull mode: text = recorder.text()
+    - Logs "[USER] ..."
+    - Publishes recognized text to /stt_text
+    - Filters kwargs by constructor signature to avoid "unexpected keyword" errors
     """
 
     def __init__(self):
@@ -28,7 +42,7 @@ class StretchSTTNode(Node):
         self.declare_parameter("topics.stt_out", "/stt_text")
         self.stt_out_topic = str(self.get_parameter("topics.stt_out").value)
 
-        # --- STT tuning (safe defaults) ---
+        # --- STT config ---
         self.declare_parameter("stt.language", "en")
         self.declare_parameter("stt.model", "base")
         self.declare_parameter("stt.compute_type", "float32")
@@ -39,23 +53,22 @@ class StretchSTTNode(Node):
         self.declare_parameter("stt.min_length_of_recording", 0.8)
         self.declare_parameter("stt.min_gap_between_recordings", 0.3)
 
-        # Explicit mic device index (PortAudio). -1 = use default input device.
+        # Explicit mic device index (PortAudio). -1 = default
         self.declare_parameter("stt.input_device", -1)
 
-        # Debug: if True, publish even empty/whitespace transcripts (usually keep False)
+        # publish empty transcripts? (usually False)
         self.declare_parameter("stt.publish_empty", False)
 
-        self.language = str(self.get_parameter("stt.language").value)
-        self.model = str(self.get_parameter("stt.model").value)
-        self.compute_type = str(self.get_parameter("stt.compute_type").value)
+        # Read params
+        language = str(self.get_parameter("stt.language").value)
+        model = str(self.get_parameter("stt.model").value)
+        compute_type = str(self.get_parameter("stt.compute_type").value)
 
-        self.webrtc_sensitivity = int(self.get_parameter("stt.webrtc_sensitivity").value)
-        self.silero_sensitivity = float(self.get_parameter("stt.silero_sensitivity").value)
-        self.post_speech_silence_duration = float(
-            self.get_parameter("stt.post_speech_silence_duration").value
-        )
-        self.min_length_of_recording = float(self.get_parameter("stt.min_length_of_recording").value)
-        self.min_gap_between_recordings = float(self.get_parameter("stt.min_gap_between_recordings").value)
+        webrtc_sensitivity = int(self.get_parameter("stt.webrtc_sensitivity").value)
+        silero_sensitivity = float(self.get_parameter("stt.silero_sensitivity").value)
+        post_speech_silence_duration = float(self.get_parameter("stt.post_speech_silence_duration").value)
+        min_length_of_recording = float(self.get_parameter("stt.min_length_of_recording").value)
+        min_gap_between_recordings = float(self.get_parameter("stt.min_gap_between_recordings").value)
 
         self.input_device = int(self.get_parameter("stt.input_device").value)
         self.publish_empty = bool(self.get_parameter("stt.publish_empty").value)
@@ -63,39 +76,45 @@ class StretchSTTNode(Node):
         # Publisher
         self.pub_stt = self.create_publisher(String, self.stt_out_topic, 10)
 
-        # Build kwargs for RealtimeSTT
+        # Build a "maximal" kwargs set; we'll filter to what your version supports.
         stt_kwargs: Dict[str, Any] = dict(
-            language=self.language,
-            model=self.model,
-            compute_type=self.compute_type,
+            language=language,
+            model=model,
+            compute_type=compute_type,
 
-            # VAD / endpointing knobs
-            webrtc_sensitivity=self.webrtc_sensitivity,
-            silero_sensitivity=self.silero_sensitivity,
+            webrtc_sensitivity=webrtc_sensitivity,
+            silero_sensitivity=silero_sensitivity,
             silero_deactivity_detection=True,
-            post_speech_silence_duration=self.post_speech_silence_duration,
-            min_length_of_recording=self.min_length_of_recording,
-            min_gap_between_recordings=self.min_gap_between_recordings,
 
-            # reduce console noise
+            post_speech_silence_duration=post_speech_silence_duration,
+            min_length_of_recording=min_length_of_recording,
+            min_gap_between_recordings=min_gap_between_recordings,
+
             enable_realtime_transcription=False,
             spinner=False,
         )
 
-        # Best-effort across versions: these names differ
+        # Device selection: try common names across versions.
+        # We'll add both, then filter down to what actually exists.
         if self.input_device >= 0:
             stt_kwargs["input_device_index"] = self.input_device
-            stt_kwargs["device_index"] = self.input_device
+            stt_kwargs["device_index"] = self.input_device  # some versions use this
+            stt_kwargs["input_device"] = self.input_device  # some versions might use this
+
+        # Filter kwargs to match your installed RealtimeSTT version
+        filtered_kwargs = filter_kwargs_for_callable(AudioToTextRecorder, stt_kwargs)
+
+        # Log what we ended up using (super helpful for debugging)
+        self.get_logger().info(
+            f"RealtimeSTT ctor kwargs in use: {sorted(filtered_kwargs.keys())}"
+        )
 
         # Create recorder
-        self.recorder = AudioToTextRecorder(**stt_kwargs)
+        self.recorder = AudioToTextRecorder(**filtered_kwargs)
 
         self.get_logger().info(
             "StretchSTTNode ready | "
-            f"out={self.stt_out_topic} lang={self.language} model={self.model} "
-            f"device={self.input_device} "
-            f"silero={self.silero_sensitivity} webrtc={self.webrtc_sensitivity} "
-            f"silence={self.post_speech_silence_duration}s"
+            f"out={self.stt_out_topic} device={self.input_device}"
         )
 
         # Start listen thread
@@ -120,7 +139,7 @@ class StretchSTTNode(Node):
     def _listen_loop(self):
         self.get_logger().info("[STT] listen loop started")
 
-        # Start recorder once
+        # Start once if available
         try:
             if hasattr(self.recorder, "start"):
                 self.recorder.start()
@@ -129,8 +148,7 @@ class StretchSTTNode(Node):
 
         while rclpy.ok() and not self._stop_flag.is_set():
             try:
-                # PULL mode: blocks until it thinks an utterance is complete
-                text = self.recorder.text()
+                text = self.recorder.text()  # blocks until utterance completes
             except KeyboardInterrupt:
                 break
             except Exception as e:
@@ -147,10 +165,8 @@ class StretchSTTNode(Node):
             if not cleaned and not self.publish_empty:
                 continue
 
-            # Log + publish
             self.get_logger().info(f"[USER] {cleaned if cleaned else repr(raw)}")
             self._publish_text(cleaned)
-
             time.sleep(0.01)
 
 
