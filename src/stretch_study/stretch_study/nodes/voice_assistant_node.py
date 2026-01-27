@@ -142,7 +142,7 @@ class VoiceAssistantNode(Node):
         if state == "start":
             self._speech_active = True
             # hard mute while robot is speaking
-            self._mute_until = time.time() + 3600.0
+            self._mute_until = time.time() + 5.0
             if self.debug_log:
                 self.get_logger().info("[TURNTAKE] speech start -> STT muted")
         elif state == "done":
@@ -241,12 +241,29 @@ class VoiceAssistantNode(Node):
 
     def _listen_loop(self):
         self.get_logger().info("[STT] listen loop started")
+
+        # Make sure STT is actually running
+        try:
+            if hasattr(self.recorder, "start"):
+                self.recorder.start()
+        except Exception as e:
+            self.get_logger().error(f"[STT] failed to start recorder: {e}")
+
         while rclpy.ok():
+            # hard gate while robot is speaking
+            if self._speech_active or time.time() < self._mute_until:
+                time.sleep(0.05)
+                continue
+
+            # don't accept new speech while we're processing a turn
             if self._busy_lock.locked():
                 time.sleep(0.05)
                 continue
+
             try:
-                self.recorder.text(self._on_transcript)
+                text = self.recorder.text()  # blocks until an utterance completes
+                if text:
+                    self._on_transcript(text)
             except Exception as e:
                 self.get_logger().error(f"[STT] recorder.text error: {e}")
                 time.sleep(0.2)

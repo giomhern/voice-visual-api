@@ -141,9 +141,10 @@ class SpeechNode(Node):
         vol = float(volume) / 100.0
         vol = max(0.0, min(1.0, vol))
 
-        # Choose device
         if self.audio_device >= 0:
-            sd.default.device = self.audio_device
+            # Keep input device as-is, set only output device
+            current_in, current_out = sd.default.device
+            sd.default.device = (current_in, self.audio_device)
 
         chunk_count = 0
         for _, _, audio in gen:
