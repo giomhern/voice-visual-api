@@ -139,26 +139,36 @@ class VoiceAssistantNode(Node):
 
     def _on_speech_status(self, msg: String):
         state = (msg.data or "").strip().lower()
+
         if state == "start":
             self._speech_active = True
-            # hard mute while robot is speaking
-            self._mute_until = time.time() + 5.0
             if self.debug_log:
-                self.get_logger().info("[TURNTAKE] speech start -> STT muted")
-        elif state == "done":
-            self._speech_active = False
-            # unmute immediately after done
-            self._mute_until = 0.0
-            # restart STT cleanly so it begins listening right now
+                self.get_logger().info("[TURNTAKE] speech start -> stopping STT")
+
+            # stop/abort STT so it cannot hear itself
             try:
                 if hasattr(self.recorder, "abort"):
                     self.recorder.abort()
-                if hasattr(self.recorder, "start"):
-                    self.recorder.start()
+                if hasattr(self.recorder, "stop"):
+                    self.recorder.stop()
             except Exception:
                 pass
+
+        elif state == "done":
+            self._speech_active = False
             if self.debug_log:
-                self.get_logger().info("[TURNTAKE] speech done -> STT unmuted")
+                self.get_logger().info("[TURNTAKE] speech done -> restarting STT after cooldown")
+
+            # restart after a short cooldown
+            def restart():
+                time.sleep(self.listen_cooldown_s)
+                try:
+                    if hasattr(self.recorder, "start"):
+                        self.recorder.start()
+                except Exception:
+                    pass
+
+            threading.Thread(target=restart, daemon=True).start()
 
     def _after_speak_reset_stt(self):
         """After speaking, wait a cooldown then restart STT to avoid stuck recorder / echo."""
