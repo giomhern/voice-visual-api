@@ -68,7 +68,7 @@ class Nav2Navigator:
 
         self.node.get_logger().info("[NAV] Waiting for Nav2 to become active...")
         try:
-            self.nav.waitUntilNav2Active()
+            self.nav.waitUntilNav2Active(localizer="slam_toolbox")
         except Exception as e:
             self.node.get_logger().error(f"[NAV] waitUntilNav2Active failed: {e}")
             return False
