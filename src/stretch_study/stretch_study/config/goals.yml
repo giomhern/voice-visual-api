@@ -5,10 +5,10 @@ initial_pose:
   yaw: 0.0
 
 goals:
-  desk:
-    x: -1.86
-    y: 0.93
-    yaw: 1.36
+   desk:
+    x: -0.03
+    y: -2.20
+    yaw: -1.94
   bed:
     x: 2.10
     y: 0.20

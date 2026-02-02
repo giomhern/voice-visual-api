@@ -1,3 +1,6 @@
+# study_engine.py
+from __future__ import annotations
+
 import json
 from typing import Any, Dict, Optional, Tuple
 
@@ -11,7 +14,9 @@ from rcl_interfaces.srv import SetParameters
 from stretch_study.core.script_steps import build_script
 from stretch_study.core.logger import StudyLogger
 from stretch_study.capabilities.deterministic_demos import DeterministicDemos
-from stretch_study.capabilities.nav2_navigator import Nav2Navigator
+
+# FUNMAP navigator wrapper (you should place this in stretch_study/capabilities/funmap_navigator.py)
+from stretch_study.capabilities.funmap_navigator import FunmapNavigator
 
 
 ALLOWED_GLOBAL_KEYS = {
@@ -53,7 +58,7 @@ class StudyEngine(Node):
         self.declare_parameter("motion.distances_m.desk_to_bed", 0.0)
         self.declare_parameter("motion.distances_m.bed_to_kitchen", 0.0)
 
-        # cmd_vel scaler (Nav2 speed scaling)
+        # cmd_vel scaler (used for speed scaling; still OK even with FUNMAP)
         self.declare_parameter("motion.scaler_node", "/cmd_vel_scaler")
 
         # -------------------------
@@ -64,12 +69,17 @@ class StudyEngine(Node):
         self.declare_parameter("study.log_dir", "~/stretch_study_logs")
 
         # -------------------------
-        # Parameters: navigation (Nav2)
+        # Parameters: navigation (FUNMAP)
         # -------------------------
         self.declare_parameter("nav.enable", False)
         self.declare_parameter("nav.goals_yaml", "")
         self.declare_parameter("nav.timeout_s", 120.0)
         self.declare_parameter("nav.advance_on_fail", False)
+
+        # FUNMAP-specific knobs
+        self.declare_parameter("nav.goal_topic", "/goal_pose")   # RViz "2D Goal Pose" topic
+        self.declare_parameter("nav.base_frame", "base_link")    # use base_footprint if needed
+        self.declare_parameter("nav.arrive_dist_m", 0.35)
 
         # -------------------------
         # Parameters: speech
@@ -102,6 +112,10 @@ class StudyEngine(Node):
         self.nav_timeout_s = float(self.get_parameter("nav.timeout_s").value)
         self.nav_advance_on_fail = bool(self.get_parameter("nav.advance_on_fail").value)
 
+        self.nav_goal_topic = str(self.get_parameter("nav.goal_topic").value)
+        self.nav_base_frame = str(self.get_parameter("nav.base_frame").value)
+        self.nav_arrive_dist_m = float(self.get_parameter("nav.arrive_dist_m").value)
+
         self.speech_enable = bool(self.get_parameter("speech.enable").value)
         self.speech_volume = int(self.get_parameter("speech.volume").value)
         self.speech_rate = int(self.get_parameter("speech.rate").value)
@@ -115,7 +129,7 @@ class StudyEngine(Node):
         self.pub_speech = self.create_publisher(String, "/speech_request", 10)
 
         # -------------------------
-        # Scaler param client (Nav2 speed)
+        # Scaler param client (speed scaling)
         # -------------------------
         self._scaler_client = self.create_client(SetParameters, f"{self.scaler_node}/set_parameters")
 
@@ -150,19 +164,29 @@ class StudyEngine(Node):
             odom_topic=self.odom_topic,
         )
 
-        # Nav2 navigator (optional)
-        self.navigator: Optional[Nav2Navigator] = None
+        # -------------------------
+        # FUNMAP navigator (optional)
+        # -------------------------
+        self.navigator: Optional[FunmapNavigator] = None
         if self.nav_enabled:
             if not self.nav_goals_yaml:
                 self.get_logger().error("[NAV] nav.enable is true but nav.goals_yaml is empty. Disabling nav.")
                 self.nav_enabled = False
             else:
                 try:
-                    self.navigator = Nav2Navigator(node=self, goals_yaml=self.nav_goals_yaml)
-                    ok = self.navigator.activate(timeout_s=30.0)
-                    self.get_logger().info(f"[NAV] Navigator active={ok} goals={self.nav_goals_yaml}")
+                    self.navigator = FunmapNavigator(
+                        node=self,
+                        goals_yaml=self.nav_goals_yaml,
+                        goal_topic=self.nav_goal_topic,
+                        base_frame=self.nav_base_frame,
+                    )
+                    ok = self.navigator.activate(timeout_s=3.0)
+                    self.get_logger().info(
+                        f"[FUNMAP] Navigator ready={ok} goals={self.nav_goals_yaml} "
+                        f"topic={self.nav_goal_topic} base={self.nav_base_frame}"
+                    )
                 except Exception as e:
-                    self.get_logger().error(f"[NAV] Failed to init Nav2Navigator: {e}")
+                    self.get_logger().error(f"[FUNMAP] Failed to init FunmapNavigator: {e}")
                     self.nav_enabled = False
                     self.navigator = None
 
@@ -171,7 +195,8 @@ class StudyEngine(Node):
             f"session_id={self.study_session_id} participant_id={self.study_participant_id} "
             f"motion_enabled={self.motion_enabled} cmd_vel={self.cmd_vel_topic} odom={self.odom_topic} "
             f"distances={self.distances} "
-            f"nav_enabled={self.nav_enabled} nav_goals_yaml={self.nav_goals_yaml} "
+            f"nav_enabled={self.nav_enabled} goals_yaml={self.nav_goals_yaml} "
+            f"goal_topic={self.nav_goal_topic} base_frame={self.nav_base_frame} "
             f"scaler_node={self.scaler_node} "
             f"log_dir={self.study_log_dir} speech_enable={self.speech_enable}"
         )
@@ -337,7 +362,13 @@ class StudyEngine(Node):
         )
 
         self.logger.log_event(
-            {"type": "prompt", "step_id": step["id"], "prompt": step["prompt"], "step_idx": self.step_idx, "location": self.location}
+            {
+                "type": "prompt",
+                "step_id": step["id"],
+                "prompt": step["prompt"],
+                "step_idx": self.step_idx,
+                "location": self.location,
+            }
         )
 
         self.speak(step["prompt"], interrupt=True)
@@ -351,7 +382,7 @@ class StudyEngine(Node):
         success = True
 
         if self.nav_enabled and self.navigator is not None:
-            self.get_logger().info(f"[NAV] Navigating to '{room}' via Nav2...")
+            self.get_logger().info(f"[NAV] Navigating to '{room}' via FUNMAP...")
 
             sd = self._get_effective_setting("social_distance", room=room, default="medium")
             stand_off_m = self._social_distance_to_m(sd)
@@ -361,8 +392,10 @@ class StudyEngine(Node):
                     room,
                     timeout_s=self.nav_timeout_s,
                     stand_off_m=stand_off_m,
+                    arrive_dist_m=self.nav_arrive_dist_m,
                 )
             except TypeError:
+                # backwards-compat if your navigator signature differs
                 success = self.navigator.goto(room, timeout_s=self.nav_timeout_s)
             except Exception as e:
                 success = False
@@ -414,12 +447,12 @@ class StudyEngine(Node):
             self.get_logger().info(f"[TRANSITION] advance {prev} -> {self.step_idx} id={step['id']}")
             self.publish_prompt()
 
-            # NEW: auto-nav when we enter a goto step
+            # auto-nav when we enter a goto step
             if step.get("expect") == "goto":
                 room = (step.get("room") or "").strip().lower()
                 if room in ALLOWED_ROOMS:
                     self.get_logger().info(f"[AUTO_NAV] Entered goto step -> navigating to {room}")
-                    self._handle_arrive(room)   # re-use your existing logic
+                    self._handle_arrive(room)
                 else:
                     self.get_logger().warn(f"[AUTO_NAV] goto step has invalid room='{room}'")
 
