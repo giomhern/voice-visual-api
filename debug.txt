@@ -1,0 +1,17 @@
+[INFO] [1770158114.054202658] [clean_surface]: Clean surface node is ready!
+[INFO] [1770158117.846382120] [clean_surface]: Cleaning initiating!
+[INFO] [1770158117.847446856] [stretch_funmap]: ManipulationView __init__: self.debug_directory = None
+MaxHeightImage information:
+     image.shape = (334, 434)
+     image.dtype = uint8
+     m_per_pix = 0.006
+     m_per_height_unit = 0.004566929133858267
+     voi.x_in_m = 2.6
+     voi.y_in_m = 2.0
+     voi.z_in_m = 1.16
+[INFO] [1770158120.138352263] [clean_surface]: CleanSurfaceNode: No debug directory provided, so debugging data will not be saved.
+segment_max_height_image.py : find_floor
+[INFO] [1770158125.325808970] [clean_surface]: Plan:[]
+[INFO] [1770158125.326403159] [clean_surface]: ********* lift_to_surface_m = 0.5694745598325534 **************
+^C[INFO] [1770158135.811604388] [clean_surface]: interrupt received, so shutting down
+Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
