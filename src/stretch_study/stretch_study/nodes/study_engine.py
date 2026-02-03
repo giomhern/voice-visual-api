@@ -385,7 +385,8 @@ class StudyEngine(Node):
             self.get_logger().info(f"[NAV] Navigating to '{room}' via FUNMAP...")
 
             sd = self._get_effective_setting("social_distance", room=room, default="medium")
-            stand_off_m = self._social_distance_to_m(sd)
+            # stand_off_m = self._social_distance_to_m(sd)
+            stand_off_m = 0.0
 
             try:
                 success = self.navigator.goto(
