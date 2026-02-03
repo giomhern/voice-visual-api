@@ -1,102 +1,47 @@
 # Voice vs Visual Interfaces API
 
-This repository contains the source code for the Flask API built to control the settings of Hello Robot's Stretch. It allows us to have a REST API interface to connect with our Kotlin mobile application. 
+This repository contains the source code all of the movement and demos for a research project 
+comparing user interactions with Hello-Robot's Stretch in the midst of different modalities. 
 
-## File Structure
 
-The file structure is shown below. `control.py` provides the heart of the API and `run.py` segments the API interface. All other files are included for project setup and completeness. 
+## Helpful Guide for Interaction Setup 
+
+1. For navigation, run the FUNMAP command:
 
 ```bash
-├── app
-│   ├── app.py
-│   ├── audio.py
-│   ├── gemini.py
-│   └── robot_control.py
-├── misc
-│   └── central_control_node.py
-├── README.md
-├── requirements.txt
-└── tests
-    └── test.wav
+ros2 launch stretch_funmap mapping.launch.py map_yaml:=/home/hello-robot/stretch_user/debug/merged_maps/merged_map_20260202160851
 ```
 
-## Getting Started 
+2. Run the command to initiate teleop and proceed to move the base to where we want it to be:
 
-All of these steps should be performed on the Stretch robot.
-
-1. Clone this repository. 
-
-```
-git clone
+```bash
+ros2 run stretch_core keyboard_teleop --ros-args -p mapping_on:=True
 ```
 
-2. Create a virtual environment and activate it:
-   
-```
-python -m venv myenv
-source myenv/bin/activate
-```
+3. Localize Stretch so he can navigate to the correct goal poses:
 
-3. Install the required dependencies.
-
-```
-pip install -r requirements.txt
+```bash
+ros2 service call /funmap/trigger_global_localization std_srvs/srv/Trigger {}
+ros2 service call /funmap/trigger_local_localization std_srvs/srv/Trigger {}
 ```
 
-4. Navigate to the `app` directory.
+4. Navigate to the stretch_study package repository, build package and source:
 
-```
-cd app
-```
-
-5. Start the Flask API server:
-
-```
-python app.py
+```bash
+cd voice-visual-api/src 
+colcon build
+source install/setup.bash
 ```
 
-## Commands 
+5. In different terminals run the following commands:
 
-There are numerous commands you can run in a separate terminal window to ensure your robot can be accessed via API. 
+```bash
+ros2 run stretch_study study_engine \
+  --ros-args \
+  -p nav_enable:=true \
+  -p nav.goals_yaml:=/home/hello-robot/voice-visual-api/src/stretch_study/stretch_study/config/goals/goals.yaml \
+  -p motion.scaler_mode:=/cmd_vel_scaler
 
-
-### Health/Diagnositics
-
-```
-# health & diag
-curl -s http://localhost:5000/health
-curl -s http://localhost:5000/robot/diagnostics
-```
-
-For quick e-start verification:
-
-```
-# start (release run-stop/estop first)
-curl -s -X POST http://localhost:5000/robot/start
+ros2 run stretch_study keyboard_teleop
 ```
 
-
-### Movement
-
-```
-# move 0.2 m forward
-curl -s -X POST http://localhost:5000/robot/move -H "Content-Type: application/json" -d '{"distance_m":0.2}'
-```
-
-
-### Speech to Modify Settings
-
-```
-arecord -f cd -d 4 -t wav test.wav # record 4 second voice snippet
-# Say "start the robot"
-curl -X POST http://localhost:5000/voice/command \
-  -F "audio=@test.wav" \
-  -F "mime_type=audio/wav"
-```
-
-```
-# use only textual interface
-curl -X POST http://localhost:5000/voice/command \
-  -H "Content-Type: application/json" \
-  -d '{"text":"mute"}'
-```
