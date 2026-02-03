@@ -15,8 +15,7 @@ from stretch_study.core.script_steps import build_script
 from stretch_study.core.logger import StudyLogger
 from stretch_study.capabilities.deterministic_demos import DeterministicDemos
 from stretch_study.capabilities.funmap_navigator import FunmapNavigator
-from stretch_study.capabilities.post_arrival import FunmapTriggers
-
+from stretch_study.capabilities.post_arrival import FunmapTriggers, FunmapRotate
 
 ALLOWED_GLOBAL_KEYS = {
     "movement_speed",
@@ -139,9 +138,11 @@ class StudyEngine(Node):
             distances={},
             cmd_vel_topic=self.cmd_vel_topic,
             odom_topic=self.odom_topic,
+            clean_surface_service="/clean_surface/trigger_clean_surface"
         )
 
         self.funmap = FunmapTriggers(self)
+        # self.rotator = FunmapRotate(self)  # optional
 
         # FUNMAP navigator
         self.navigator: Optional[FunmapNavigator] = None
