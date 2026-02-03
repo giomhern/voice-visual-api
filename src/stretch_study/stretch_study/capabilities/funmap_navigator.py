@@ -9,6 +9,7 @@ import yaml
 import rclpy
 from geometry_msgs.msg import PoseStamped
 from tf2_ros import Buffer, TransformListener
+from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 
 def yaw_to_quat(yaw: float):
@@ -169,3 +170,41 @@ class FunmapNavigator:
 
         self.node.get_logger().warn(f"[FUNMAP] {name}: TIMEOUT after {timeout_s:.1f}s")
         return False
+    
+
+    def _get_current_pose_map(self, timeout_s: float = 1.0):
+        t0 = time.time()
+        while time.time() - t0 < timeout_s:
+            try:
+                t = self.tf_buffer.lookup_transform("map", self.base_frame, rclpy.time.Time())
+                x = t.transform.translation.x
+                y = t.transform.translation.y
+                q = t.transform.rotation
+                yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])[2]
+                return x, y, yaw
+            except Exception:
+                time.sleep(0.05)
+        raise RuntimeError("Could not lookup map->base transform")
+
+    def rotate_relative(self, delta_yaw_rad: float, timeout_s: float = 20.0) -> bool:
+        x, y, yaw = self._get_current_pose_map(timeout_s=2.0)
+        target_yaw = yaw + float(delta_yaw_rad)
+
+        q = quaternion_from_euler(0.0, 0.0, target_yaw)
+
+        msg = PoseStamped()
+        msg.header.frame_id = "map"
+        msg.header.stamp = self.node.get_clock().now().to_msg()
+        msg.pose.position.x = float(x)
+        msg.pose.position.y = float(y)
+        msg.pose.orientation.x = float(q[0])
+        msg.pose.orientation.y = float(q[1])
+        msg.pose.orientation.z = float(q[2])
+        msg.pose.orientation.w = float(q[3])
+
+        self.node.get_logger().info(f"[FUNMAP] rotate_relative: yaw {yaw:.2f} -> {target_yaw:.2f}")
+        self.goal_pub.publish(msg)
+
+        # Then just reuse your existing "wait until arrived" logic if you have one.
+        # If your goto() already waits for arrival via TF distance, call it here:
+        return self._wait_until_arrived_xy(x, y, timeout_s=timeout_s)
