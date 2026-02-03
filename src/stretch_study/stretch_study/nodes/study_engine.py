@@ -239,8 +239,10 @@ class StudyEngine(Node):
             key = ev.get("key")
             val = ev.get("value")
 
-            if scope == "room" and room := ev.get("room"):
-                self.room_settings.setdefault(room, {})[key] = val
+            if scope == "room":
+                room = ev.get("room")
+                if room:
+                    self.room_settings.setdefault(room, {})[key] = val
             elif scope == "global":
                 self.global_settings[key] = val
 
