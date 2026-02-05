@@ -5,15 +5,49 @@ import math
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Tuple, Callable
 
-import rclpy
-from rclpy.action import ActionClient
-from std_srvs.srv import Trigger
-
 from action_msgs.msg import GoalStatus
 from control_msgs.action import FollowJointTrajectory
+from sensor_msgs.msg import JointState
+from std_srvs.srv import Trigger
 from trajectory_msgs.msg import JointTrajectoryPoint
 
+import rclpy
+from rclpy.action import ActionClient
+
 from .base_motion import BaseMotion
+
+
+# -----------------------------
+# Joint state cache (for waypoint 0)
+# -----------------------------
+class JointStateCache:
+    """Caches latest /stretch/joint_states so we can build a 2-waypoint trajectory (required by stretch_driver)."""
+
+    def __init__(self, node, topic: str = "/stretch/joint_states"):
+        self.node = node
+        self._latest: Dict[str, float] = {}
+        self._sub = node.create_subscription(JointState, topic, self._cb, 10)
+
+    def _cb(self, msg: JointState) -> None:
+        d: Dict[str, float] = {}
+        for i, name in enumerate(msg.name):
+            if i < len(msg.position):
+                d[name] = float(msg.position[i])
+        self._latest = d
+
+    def get(self, name: str) -> Optional[float]:
+        return self._latest.get(name)
+
+    def get_many(self, names: List[str]) -> Optional[List[float]]:
+        if not self._latest:
+            return None
+        out: List[float] = []
+        for n in names:
+            v = self._latest.get(n)
+            if v is None:
+                return None
+            out.append(float(v))
+        return out
 
 
 # -----------------------------
@@ -26,13 +60,7 @@ class CleanSurfaceConfig:
 
 
 class CleanSurfaceClient:
-    """
-    Minimal client to trigger Hello Robot's clean_surface demo.
-
-    IMPORTANT:
-    - In a larger app (StudyEngine), your node is likely already being spun by an executor.
-      So we avoid spin_until_future_complete and use async callbacks.
-    """
+    """Minimal client to trigger Hello Robot's clean_surface demo (std_srvs/Trigger)."""
 
     def __init__(self, node, cfg: Optional[CleanSurfaceConfig] = None):
         self.node = node
@@ -41,22 +69,17 @@ class CleanSurfaceClient:
 
     def _try_autodiscover_service(self) -> Optional[str]:
         names_and_types = self.node.get_service_names_and_types()
-        candidates = []
-        for (name, types) in names_and_types:
-            if "clean_surface" in name:
-                candidates.append((name, types))
-
+        candidates = [(n, t) for (n, t) in names_and_types if "clean_surface" in n]
         if not candidates:
             return None
-
+        # Prefer Trigger with 'trigger' in name
         for (name, types) in candidates:
-            if any(t == "std_srvs/srv/Trigger" for t in types) and ("trigger" in name.lower()):
+            if "trigger" in name.lower() and any(tt == "std_srvs/srv/Trigger" for tt in types):
                 return name
-
+        # Otherwise any Trigger
         for (name, types) in candidates:
-            if any(t == "std_srvs/srv/Trigger" for t in types):
+            if any(tt == "std_srvs/srv/Trigger" for tt in types):
                 return name
-
         return candidates[0][0]
 
     def _ensure_client(self) -> bool:
@@ -82,10 +105,7 @@ class CleanSurfaceClient:
         return True
 
     def trigger_async(self, on_done: Optional[Callable[[bool], None]] = None) -> bool:
-        """
-        Fire-and-log trigger. Returns True if request was dispatched.
-        Calls on_done(success: bool) when response arrives.
-        """
+        """Fire the Trigger request and log response when it arrives."""
         if not self._ensure_client():
             return False
 
@@ -118,7 +138,6 @@ class CleanSurfaceClient:
 # -----------------------------
 @dataclass
 class PreWipePose:
-    # Your recorded snapshot ordering
     joint_names: Tuple[str, ...] = (
         "wrist_extension",
         "joint_lift",
@@ -153,19 +172,23 @@ class PreWipePose:
     wait_for_action_s: float = 5.0
 
 
+# -----------------------------
+# Trajectory mover (2-waypoint + valid command group)
+# -----------------------------
 class JointTrajectoryMover:
     """
-    Sends a FollowJointTrajectory goal to Stretch trajectory controller.
-
-    IMPORTANT:
-    - We do NOT spin in here. Your app's executor should already be spinning.
-    - We use callbacks on futures.
+    Sends FollowJointTrajectory to Stretch.
+    FIXES:
+      - Sends at least 2 waypoints (required by stretch_driver joint_traj action).
+      - Avoids mixing joint groups (head/gripper) into a single goal.
+      - Avoids internal spinning (assumes your StudyEngine/executor is spinning).
     """
 
     def __init__(self, node, action_name: str = "/stretch_controller/follow_joint_trajectory"):
         self.node = node
         self._action_name = str(action_name)
         self._client = ActionClient(self.node, FollowJointTrajectory, self._action_name)
+        self._js = JointStateCache(self.node, topic="/stretch/joint_states")
         self.node.get_logger().info(f"[POSTURE] Using FollowJointTrajectory action: {self._action_name}")
 
     def move_to_async(
@@ -184,16 +207,31 @@ class JointTrajectoryMover:
             self.node.get_logger().error(f"[POSTURE] Action server not available: {self._action_name}")
             return False
 
+        # Waypoint 0: current positions (preferred), else duplicate target (still satisfies >=2 points)
+        start_pos = self._js.get_many(joint_names)
+        if start_pos is None:
+            self.node.get_logger().warn(
+                "[POSTURE] No complete joint_states for start waypoint; duplicating target as waypoint 0."
+            )
+            start_pos = [float(x) for x in positions]
+
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = list(joint_names)
 
-        pt = JointTrajectoryPoint()
-        pt.positions = [float(x) for x in positions]
-        pt.time_from_start.sec = int(move_time_s)
-        pt.time_from_start.nanosec = int((move_time_s - int(move_time_s)) * 1e9)
-        goal.trajectory.points = [pt]
+        pt0 = JointTrajectoryPoint()
+        pt0.positions = [float(x) for x in start_pos]
+        pt0.time_from_start.sec = 0
+        pt0.time_from_start.nanosec = 0
 
-        self.node.get_logger().info(f"[POSTURE] Sending trajectory goal ({len(joint_names)} joints)...")
+        pt1 = JointTrajectoryPoint()
+        pt1.positions = [float(x) for x in positions]
+        pt1.time_from_start.sec = int(move_time_s)
+        pt1.time_from_start.nanosec = int((move_time_s - int(move_time_s)) * 1e9)
+
+        # IMPORTANT: >= 2 waypoints
+        goal.trajectory.points = [pt0, pt1]
+
+        self.node.get_logger().info(f"[POSTURE] Sending trajectory goal ({len(joint_names)} joints, 2 waypoints)...")
         send_fut = self._client.send_goal_async(goal)
 
         def _on_goal_sent(f):
@@ -206,7 +244,10 @@ class JointTrajectoryMover:
                 return
 
             if not goal_handle.accepted:
-                self.node.get_logger().error("[POSTURE] Trajectory goal rejected")
+                self.node.get_logger().error(
+                    "[POSTURE] Trajectory goal rejected (joint group mismatch). "
+                    f"joints={joint_names}"
+                )
                 if on_done:
                     on_done(False)
                 return
@@ -245,12 +286,10 @@ class DeterministicDemos:
         cmd_vel_topic: str = "/stretch/cmd_vel",
         odom_topic: str = "/odom",
         clean_surface_service: str = "/clean_surface/trigger_clean_surface",
-        # Setup services
         funmap_head_scan_srv: str = "/funmap/trigger_head_scan",
         funmap_local_loc_srv: str = "/funmap/trigger_local_localization",
         switch_to_traj_srv: str = "/switch_to_trajectory_mode",
         switch_to_nav_srv: str = "/switch_to_navigation_mode",
-        # Trajectory action
         follow_joint_traj_action: str = "/stretch_controller/follow_joint_trajectory",
         **_ignored_kwargs,
     ):
@@ -268,13 +307,11 @@ class DeterministicDemos:
             cfg=CleanSurfaceConfig(service_name=str(clean_surface_service)),
         )
 
-        # Setup trigger clients
         self._srv_head_scan = self.node.create_client(Trigger, funmap_head_scan_srv)
         self._srv_local_loc = self.node.create_client(Trigger, funmap_local_loc_srv)
         self._srv_traj_mode = self.node.create_client(Trigger, switch_to_traj_srv)
         self._srv_nav_mode = self.node.create_client(Trigger, switch_to_nav_srv)
 
-        # Posture mover + config
         self._posture = JointTrajectoryMover(self.node, action_name=follow_joint_traj_action)
         self._pre_wipe_pose = PreWipePose()
 
@@ -287,9 +324,6 @@ class DeterministicDemos:
             f"traj_srv={switch_to_traj_srv} nav_srv={switch_to_nav_srv}"
         )
 
-    # -----------------------------
-    # Async Trigger helper (no internal spinning)
-    # -----------------------------
     def _call_trigger_async(
         self,
         client,
@@ -321,31 +355,102 @@ class DeterministicDemos:
         self.node.get_logger().info(f"[SETUP] {name}: request sent (async)")
         return True
 
-    # -----------------------------
-    # Filter your recorded pose down to joints the trajectory controller typically owns
-    # -----------------------------
-    def _filtered_pre_wipe(self) -> Tuple[List[str], List[float]]:
+    def _filtered_pre_wipe(self, prefer_wrist_extension: bool = True) -> Tuple[List[str], List[float]]:
+        """
+        IMPORTANT:
+        - stretch_driver joint_traj action typically expects a recognized "command group".
+        - On many systems, arm extension is commanded as `wrist_extension` (single joint),
+          NOT as `joint_arm_l0..l3`. Sending the segmented joints can violate group rules.
+
+        If your controller actually expects joint_arm_l* instead, set prefer_wrist_extension=False.
+        """
         cfg = self._pre_wipe_pose
-        allowed = {
-            "joint_lift",
-            "joint_arm_l0",
-            "joint_arm_l1",
-            "joint_arm_l2",
-            "joint_arm_l3",
-            "joint_wrist_yaw",
-            "joint_wrist_pitch",
-            "joint_wrist_roll",
-        }
-        names: List[str] = []
+        snap = {j: float(p) for j, p in zip(cfg.joint_names, cfg.positions)}
+
+        if prefer_wrist_extension and "wrist_extension" in snap:
+            # Common manipulation group set (minimal + valid)
+            names = [
+                "wrist_extension",
+                "joint_lift",
+                "joint_wrist_yaw",
+                "joint_wrist_pitch",
+                "joint_wrist_roll",
+            ]
+        else:
+            # Alternative representation if your controller truly owns the segmented telescoping joints
+            names = [
+                "joint_arm_l0",
+                "joint_arm_l1",
+                "joint_arm_l2",
+                "joint_arm_l3",
+                "joint_lift",
+                "joint_wrist_yaw",
+                "joint_wrist_pitch",
+                "joint_wrist_roll",
+            ]
+
         pos: List[float] = []
-        for j, p in zip(cfg.joint_names, cfg.positions):
-            if j in allowed:
-                names.append(j)
-                pos.append(float(p))
+        missing: List[str] = []
+        for n in names:
+            if n not in snap:
+                missing.append(n)
+            else:
+                pos.append(float(snap[n]))
+
+        if missing:
+            self.node.get_logger().error(f"[POSTURE] Missing joints from recorded pose: {missing}")
+            return [], []
+
+        return names, pos
+
+    # -----------------------------
+    # Surface cleaning demo pipeline
+    # -----------------------------
+    def desk_demo(self, thoroughness: str) -> None:
+        thoroughness = (thoroughness or "").lower().strip()
+        self.node.get_logger().info(f"[DEMO] Desk surface-clean requested thoroughness='{thoroughness}'")
+
+        # Choose joint group mapping (default prefers wrist_extension)
+        names, pos = self._filtered_pre_wipe(prefer_wrist_extension=True)
+        cfg = self._pre_wipe_pose
 
         if not names:
-            self.node.get_logger().error("[POSTURE] Filtered pre-wipe pose is empty. Check joint names.")
-        return names, pos
+            self.node.get_logger().error("[DEMO] Pre-wipe pose empty; aborting.")
+            return
+
+        def _after_clean_surface(ok: bool):
+            if ok:
+                self.node.get_logger().info("[DEMO] clean_surface triggered; it will scan/plan/execute.")
+            else:
+                self.node.get_logger().error("[DEMO] clean_surface trigger failed.")
+
+        def _after_pose(ok: bool):
+            if not ok:
+                self.node.get_logger().error(
+                    "[DEMO] Could not reach pre-wipe posture (goal rejected/aborted). "
+                    "If the goal is rejected, flip prefer_wrist_extension=False."
+                )
+                return
+
+            self.node.get_logger().info("[DEMO] Pre-wipe reached; triggering clean_surface...")
+            if not self.clean_surface.trigger_async(on_done=_after_clean_surface):
+                self.node.get_logger().error("[DEMO] Could not dispatch clean_surface trigger (service missing?).")
+
+        def _after_traj_mode(_ok: bool):
+            # Even if switching fails, we try; sometimes already in trajectory mode.
+            self.node.get_logger().info(f"[DEMO] Sending pre-wipe trajectory joints={names}")
+            dispatched = self._posture.move_to_async(
+                joint_names=names,
+                positions=pos,
+                move_time_s=float(cfg.move_time_s),
+                wait_for_action_s=float(cfg.wait_for_action_s),
+                on_done=_after_pose,
+            )
+            if not dispatched:
+                self.node.get_logger().error("[DEMO] Failed to dispatch trajectory goal (action server missing?).")
+
+        # Switch to trajectory mode first (recommended)
+        self._call_trigger_async(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0, on_done=_after_traj_mode)
 
     # -----------------------------
     # Optional deterministic base transit (legacy / fallback)
@@ -387,64 +492,6 @@ class DeterministicDemos:
 
         else:
             self.node.get_logger().warn(f"[MOTION] no deterministic route for {from_loc} -> {to_loc}")
-
-    # -----------------------------
-    # Surface cleaning demo pipeline
-    # -----------------------------
-    def desk_demo(self, thoroughness: str) -> None:
-        """
-        Sequence:
-          0) (optional) switch_to_trajectory_mode
-          1) move to pre-wipe posture via FollowJointTrajectory
-          2) trigger clean_surface
-
-        NOTE:
-        - This is fully async (no spin_until_future_complete) and assumes your StudyEngine/executor is spinning.
-        """
-        thoroughness = (thoroughness or "").lower().strip()
-        self.node.get_logger().info(f"[DEMO] Desk surface-clean requested thoroughness='{thoroughness}'")
-
-        # Build filtered goal
-        names, pos = self._filtered_pre_wipe()
-        cfg = self._pre_wipe_pose
-        if not names:
-            self.node.get_logger().error("[DEMO] Pre-wipe pose empty after filtering; aborting.")
-            return
-
-        def _after_clean_surface(ok: bool):
-            # clean_surface Trigger returns quickly; the behavior continues internally
-            if ok:
-                self.node.get_logger().info("[DEMO] clean_surface triggered; it will scan/plan/execute.")
-            else:
-                self.node.get_logger().error("[DEMO] clean_surface trigger failed.")
-
-        def _after_pose(ok: bool):
-            if not ok:
-                self.node.get_logger().error(
-                    "[DEMO] Could not reach pre-wipe posture. "
-                    "If this persists, verify the controller owns these joints."
-                )
-                return
-            self.node.get_logger().info("[DEMO] Pre-wipe reached; triggering clean_surface...")
-            if not self.clean_surface.trigger_async(on_done=_after_clean_surface):
-                self.node.get_logger().error(
-                    "[DEMO] Could not dispatch clean_surface trigger (service missing?)."
-                )
-
-        def _after_traj_mode(_ok: bool):
-            # Even if switching fails, we still attempt to move (sometimes already in traj mode).
-            self.node.get_logger().info("[DEMO] Sending pre-wipe trajectory...")
-            if not self._posture.move_to_async(
-                joint_names=names,
-                positions=pos,
-                move_time_s=float(cfg.move_time_s),
-                wait_for_action_s=float(cfg.wait_for_action_s),
-                on_done=_after_pose,
-            ):
-                self.node.get_logger().error("[DEMO] Failed to dispatch trajectory goal (action server missing?).")
-
-        # Optional but recommended for Stretch controller ownership
-        self._call_trigger_async(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0, on_done=_after_traj_mode)
 
     # Placeholders
     def bed_demo(self, arrangement: str) -> None:
