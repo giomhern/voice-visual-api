@@ -45,3 +45,13 @@ ros2 run stretch_study study_engine \
 ros2 run stretch_study keyboard_teleop
 ```
 
+
+
+
+"""
+ros2 service call /switch_to_position_mode std_srvs/srv/Trigger
+
+ros2 action send_goal /stretch_controller/follow_joint_trajectory \
+  control_msgs/action/FollowJointTrajectory \
+  "{trajectory: {joint_names: ['joint_lift', 'wrist_extension', 'joint_wrist_yaw'], points: [{positions: [0.5, 0.1, 0.0], time_from_start: {sec: 2}}]}}"
+"""
