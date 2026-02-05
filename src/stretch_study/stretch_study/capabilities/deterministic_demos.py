@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import math
-import time
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -20,14 +19,15 @@ class CleanSurfaceConfig:
     # Correct default for your system (you confirmed):
     # /clean_surface/trigger_clean_surface
     service_name: str = "/clean_surface/trigger_clean_surface"
-    wait_for_service_s: float = 2.0
+    # Give bringup time; 2s is often too short on real launches
+    wait_for_service_s: float = 10.0
 
 
 class CleanSurfaceClient:
     """
     Minimal client to trigger Hello Robot's clean_surface demo.
 
-    This class only triggers the demo via a ROS service call (std_srvs/srv/Trigger).
+    This class triggers the demo via a ROS service call (std_srvs/srv/Trigger).
     """
 
     def __init__(self, node, cfg: Optional[CleanSurfaceConfig] = None):
@@ -39,13 +39,13 @@ class CleanSurfaceClient:
         """
         If the configured service isn't present, look for a likely clean_surface Trigger service.
 
-        We prefer:
-          - service name contains 'trigger'
-          - service supports std_srvs/srv/Trigger
+        Preference:
+          - name contains 'clean_surface'
+          - supports std_srvs/srv/Trigger
+          - name contains 'trigger'
         """
         names_and_types = self.node.get_service_names_and_types()
         candidates = []
-
         for (name, types) in names_and_types:
             if "clean_surface" in name:
                 candidates.append((name, types))
@@ -53,17 +53,14 @@ class CleanSurfaceClient:
         if not candidates:
             return None
 
-        # Prefer a Trigger service with 'trigger' in the name
         for (name, types) in candidates:
             if any(t == "std_srvs/srv/Trigger" for t in types) and ("trigger" in name.lower()):
                 return name
 
-        # Otherwise any Trigger service
         for (name, types) in candidates:
             if any(t == "std_srvs/srv/Trigger" for t in types):
                 return name
 
-        # Last resort: return first candidate name (we'll still attempt Trigger)
         return candidates[0][0]
 
     def _ensure_client(self) -> bool:
@@ -91,29 +88,30 @@ class CleanSurfaceClient:
 
         return True
 
-    def trigger_async(self) -> bool:
+    def trigger_sync(self, timeout_s: float = 30.0) -> bool:
         """
-        Fire-and-forget: sends the trigger request asynchronously.
-        Returns True if we successfully dispatched the request (not whether cleaning succeeded).
+        Synchronous trigger: blocks until response or timeout.
+        This avoids the 'async but nothing is spinning' issue.
         """
         if not self._ensure_client():
             return False
 
-        req = Trigger.Request()
-        future = self._client.call_async(req)
+        fut = self._client.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self.node, fut, timeout_sec=float(timeout_s))
 
-        def _done_cb(fut):
-            try:
-                resp = fut.result()
-                self.node.get_logger().info(
-                    f"[CLEAN_SURFACE] Trigger response: success={resp.success} message='{resp.message}'"
-                )
-            except Exception as e:
-                self.node.get_logger().error(f"[CLEAN_SURFACE] Trigger call failed: {e}")
+        if not fut.done():
+            self.node.get_logger().error(f"[CLEAN_SURFACE] Trigger timed out after {timeout_s:.1f}s")
+            return False
 
-        future.add_done_callback(_done_cb)
-        self.node.get_logger().info(f"[CLEAN_SURFACE] Trigger sent to {self.cfg.service_name}")
-        return True
+        try:
+            resp = fut.result()
+            self.node.get_logger().info(
+                f"[CLEAN_SURFACE] Trigger response: success={resp.success} message='{resp.message}'"
+            )
+            return bool(resp.success)
+        except Exception as e:
+            self.node.get_logger().error(f"[CLEAN_SURFACE] Trigger call failed: {e}")
+            return False
 
 
 # -----------------------------
@@ -133,6 +131,8 @@ class DeterministicDemos:
         motion_enabled: bool = False,
         distances: Optional[Dict[str, float]] = None,
         cmd_vel_topic: str = "/stretch/cmd_vel",
+        # NOTE: if your Stretch does NOT publish /odom, change this to the correct topic
+        # (e.g., "/stretch/odom") or pass it in when constructing DeterministicDemos.
         odom_topic: str = "/odom",
         clean_surface_service: str = "/clean_surface/trigger_clean_surface",
         # Setup services
@@ -167,29 +167,36 @@ class DeterministicDemos:
         self.node.get_logger().info(
             "[DEMOS] init "
             f"motion_enabled={self.motion_enabled} "
+            f"cmd_vel={self.cmd_vel_topic} odom={self.odom_topic} "
             f"clean_surface_service={clean_surface_service} "
             f"head_scan_srv={funmap_head_scan_srv} local_loc_srv={funmap_local_loc_srv} "
             f"traj_srv={switch_to_traj_srv} nav_srv={switch_to_nav_srv}"
         )
 
-    def _call_trigger_async(self, client, name: str, timeout_s: float = 5.0) -> bool:
+    def _call_trigger_sync(self, client, name: str, timeout_s: float = 5.0) -> bool:
+        """
+        Call a std_srvs/Trigger service and block until completion or timeout.
+        This is robust even if your app doesn't spin elsewhere.
+        """
         if not client.wait_for_service(timeout_sec=float(timeout_s)):
             self.node.get_logger().warn(f"[SETUP] service not available: {name}")
             return False
 
         fut = client.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self.node, fut, timeout_sec=float(timeout_s))
 
-        def _done_cb(f):
-            try:
-                resp = f.result()
-                ok = bool(resp.success)
-                self.node.get_logger().info(f"[SETUP] {name}: success={ok} msg='{resp.message}'")
-            except Exception as e:
-                self.node.get_logger().warn(f"[SETUP] {name}: call failed: {e}")
+        if not fut.done():
+            self.node.get_logger().warn(f"[SETUP] {name}: timed out after {timeout_s:.1f}s")
+            return False
 
-        fut.add_done_callback(_done_cb)
-        self.node.get_logger().info(f"[SETUP] {name}: request sent (async)")
-        return True
+        try:
+            resp = fut.result()
+            ok = bool(resp.success)
+            self.node.get_logger().info(f"[SETUP] {name}: success={ok} msg='{resp.message}'")
+            return ok
+        except Exception as e:
+            self.node.get_logger().warn(f"[SETUP] {name}: call failed: {e}")
+            return False
 
     # -----------------------------
     # Deterministic base transit (legacy / fallback)
@@ -204,7 +211,7 @@ class DeterministicDemos:
         self.node.get_logger().info(f"[MOTION] transit requested {from_loc} -> {to_loc}")
 
         def _turn_left():
-            # NOTE: this uses cmd_vel under the hood; only safe if FUNMAP is NOT driving.
+            # NOTE: uses cmd_vel under the hood; only safe if FUNMAP is NOT driving.
             if hasattr(self.motion, "turn_angle"):
                 self.motion.turn_angle(self.turn_left_rad)
             else:
@@ -250,14 +257,22 @@ class DeterministicDemos:
         - Do NOT publish cmd_vel turns here if FUNMAP/nav is active.
           That causes fighting controllers and infinite spins.
         """
+        thoroughness = (thoroughness or "").lower().strip()
         self.node.get_logger().info(
             f"[DEMO] Desk surface-clean requested thoroughness='{thoroughness}'"
         )
 
-        self._call_trigger_async(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=2.0)
-        self._call_trigger_async(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=2.0)
-        self._call_trigger_async(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=2.0)
-        self.clean_surface.trigger_async()
+        # 1) Head scan (best effort)
+        self._call_trigger_sync(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=20.0)
+
+        # 2) Local localization (best effort)
+        self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=10.0)
+
+        # 3) Switch to trajectory mode (helps clean_surface execute its trajectory)
+        self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=5.0)
+
+        # 4) Trigger clean_surface (sync so it doesn't "do nothing" if nothing else is spinning)
+        ok = self.clean_surface.trigger_sync(timeout_s=30.0)
         if not ok:
             self.node.get_logger().error(
                 "[DEMO] Could not trigger clean_surface. "
@@ -270,7 +285,7 @@ class DeterministicDemos:
         # Optional:
         # Do NOT immediately switch back to nav mode; that can interrupt the arm trajectory.
         # If you want, do this later (e.g., next step / on user confirm):
-        # self._call_trigger(self._srv_nav_mode, "switch_to_navigation_mode", timeout_s=5.0)
+        # self._call_trigger_sync(self._srv_nav_mode, "switch_to_navigation_mode", timeout_s=5.0)
 
     # Placeholders
     def bed_demo(self, arrangement: str) -> None:
