@@ -55,3 +55,7 @@ ros2 action send_goal /stretch_controller/follow_joint_trajectory \
   control_msgs/action/FollowJointTrajectory \
   "{trajectory: {joint_names: ['joint_lift', 'wrist_extension', 'joint_wrist_yaw'], points: [{positions: [0.5, 0.1, 0.0], time_from_start: {sec: 2}}]}}"
 """
+
+$ ros2 action send_goal /stretch_controller/follow_joint_trajectory control_msgs/action/FollowJointTrajectory "{trajectory: {joint_names: ['joint_lift', 'wrist_extension', 'joint_wrist_yaw'], points: [{positions: [0.5, 0.1, 0.0], time_from_start: {sec: 2}}]}}"
+usage: ros2 action send_goal [-h] [-f] [-t N] action_name action_type goal
+ros2 action send_goal: error: the following arguments are required: goal
