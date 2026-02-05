@@ -62,3 +62,11 @@ effort:
 ---
 hello-robot@stretch-se3-3103:~$ 
 
+
+
+ [INFO] [1770332303.479019015] [stretch_driver]: stretch_driver joint_traj action: joint names violated one of command group's requirements
+[stretch_driver-7] [INFO] [1770332621.432607585] [stretch_driver]: Changed to mode = trajectory
+[stretch_driver-7] [INFO] [1770332621.441980686] [stretch_driver]: Received goal request
+[stretch_driver-7] -------------------------------------------
+[stretch_driver-7] Errored goal
+[stretch_driver-7] [INFO] [1770332621.447672884] [stretch_driver]: stretch_driver joint_traj action: no trajectory in goal contains enough waypoints
