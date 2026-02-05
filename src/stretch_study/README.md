@@ -76,5 +76,5 @@ Replace the gesture demo bodies in:
 with calls into your Stretch ROS 2 stack (arm trajectories, base motions, etc.).
 
 
-ros2 topic pub --once /speech_request std_msgs/msg/String \
+ros2 topic pub --once /core_body std_msgs/msg/String \
 '{"data":"{\"text\":\"Hello, I am using af_heart.\",\"volume\":70,\"voice\":\"af_heart\",\"interrupt\":true}"}'

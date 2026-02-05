@@ -172,32 +172,24 @@ class DeterministicDemos:
             f"traj_srv={switch_to_traj_srv} nav_srv={switch_to_nav_srv}"
         )
 
-    def _call_trigger(self, client, name: str, timeout_s: float = 5.0) -> bool:
-        """
-        Call a std_srvs/Trigger service and block until completion or timeout.
-        Safe for short setup operations.
-        """
+    def _call_trigger_async(self, client, name: str, timeout_s: float = 5.0) -> bool:
         if not client.wait_for_service(timeout_sec=float(timeout_s)):
             self.node.get_logger().warn(f"[SETUP] service not available: {name}")
             return False
 
         fut = client.call_async(Trigger.Request())
 
-        t0 = time.time()
-        while time.time() - t0 < float(timeout_s):
-            rclpy.spin_once(self.node, timeout_sec=0.1)
-            if fut.done():
-                try:
-                    resp = fut.result()
-                    ok = bool(resp.success)
-                    self.node.get_logger().info(f"[SETUP] {name}: success={ok} msg='{resp.message}'")
-                    return ok
-                except Exception as e:
-                    self.node.get_logger().warn(f"[SETUP] {name}: call failed: {e}")
-                    return False
+        def _done_cb(f):
+            try:
+                resp = f.result()
+                ok = bool(resp.success)
+                self.node.get_logger().info(f"[SETUP] {name}: success={ok} msg='{resp.message}'")
+            except Exception as e:
+                self.node.get_logger().warn(f"[SETUP] {name}: call failed: {e}")
 
-        self.node.get_logger().warn(f"[SETUP] {name}: timed out after {timeout_s:.1f}s")
-        return False
+        fut.add_done_callback(_done_cb)
+        self.node.get_logger().info(f"[SETUP] {name}: request sent (async)")
+        return True
 
     # -----------------------------
     # Deterministic base transit (legacy / fallback)
@@ -262,17 +254,10 @@ class DeterministicDemos:
             f"[DEMO] Desk surface-clean requested thoroughness='{thoroughness}'"
         )
 
-        # 1) Head scan (best effort)
-        self._call_trigger(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=20.0)
-
-        # 2) Local localization (best effort)
-        self._call_trigger(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=10.0)
-
-        # 3) Switch to trajectory mode (helps clean_surface execute its trajectory)
-        self._call_trigger(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=5.0)
-
-        # 4) Trigger clean_surface
-        ok = self.clean_surface.trigger_async()
+        self._call_trigger_async(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=2.0)
+        self._call_trigger_async(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=2.0)
+        self._call_trigger_async(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=2.0)
+        self.clean_surface.trigger_async()
         if not ok:
             self.node.get_logger().error(
                 "[DEMO] Could not trigger clean_surface. "
