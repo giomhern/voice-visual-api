@@ -325,12 +325,12 @@ class DeterministicDemos:
             f"[DEMO] Desk surface-clean requested thoroughness='{thoroughness}'"
         )
 
-        # (Optional) best-effort scans / localization
-        self._call_trigger_sync(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=20.0)
-        self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=10.0)
+        # # (Optional) best-effort scans / localization
+        # self._call_trigger_sync(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=20.0)
+        # self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=10.0)
 
-        # Switch to trajectory mode FIRST (so joint trajectory action works)
-        self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=5.0)
+        # # Switch to trajectory mode FIRST (so joint trajectory action works)
+        # self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=5.0)
 
         # NEW: move to the exact posture you recorded
         if not self._go_to_pre_wipe_pose():
