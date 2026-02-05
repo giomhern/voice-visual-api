@@ -145,7 +145,7 @@ class JointTrajectoryMover:
 
     def __init__(self, node):
         self.node = node
-        self._action_name = self._autodiscover_fjt_action_name()
+        self._action_name = "/stretch_controller/follow_joint_trajectory"
         self._client = ActionClient(self.node, FollowJointTrajectory, self._action_name)
         self.node.get_logger().info(f"[POSTURE] Using FollowJointTrajectory action: {self._action_name}")
 
