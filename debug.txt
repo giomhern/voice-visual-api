@@ -1,17 +1,64 @@
-[INFO] [1770158114.054202658] [clean_surface]: Clean surface node is ready!
-[INFO] [1770158117.846382120] [clean_surface]: Cleaning initiating!
-[INFO] [1770158117.847446856] [stretch_funmap]: ManipulationView __init__: self.debug_directory = None
-MaxHeightImage information:
-     image.shape = (334, 434)
-     image.dtype = uint8
-     m_per_pix = 0.006
-     m_per_height_unit = 0.004566929133858267
-     voi.x_in_m = 2.6
-     voi.y_in_m = 2.0
-     voi.z_in_m = 1.16
-[INFO] [1770158120.138352263] [clean_surface]: CleanSurfaceNode: No debug directory provided, so debugging data will not be saved.
-segment_max_height_image.py : find_floor
-[INFO] [1770158125.325808970] [clean_surface]: Plan:[]
-[INFO] [1770158125.326403159] [clean_surface]: ********* lift_to_surface_m = 0.5694745598325534 **************
-^C[INFO] [1770158135.811604388] [clean_surface]: interrupt received, so shutting down
-Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+header:
+  stamp:
+    sec: 1770329782
+    nanosec: 843843285
+  frame_id: ''
+name:
+- wrist_extension
+- joint_lift
+- joint_arm_l3
+- joint_arm_l2
+- joint_arm_l1
+- joint_arm_l0
+- joint_head_pan
+- joint_head_tilt
+- joint_wrist_yaw
+- joint_wrist_pitch
+- joint_wrist_roll
+- joint_gripper_finger_left
+- joint_gripper_finger_right
+position:
+- 0.1110089077092974
+- 0.8838716489173609
+- 0.02775222692732435
+- 0.02775222692732435
+- 0.02775222692732435
+- 0.02775222692732435
+- -1.7996282068213987
+- -0.7950621005238621
+- -0.042184471666855135
+- -1.165825398793087
+- -0.0015339807878856412
+- 0.003029408718051971
+- 0.003029408718051971
+velocity:
+- 0.0002505539605445667
+- -0.00017865965935840355
+- 6.263849013614168e-05
+- 6.263849013614168e-05
+- 6.263849013614168e-05
+- 6.263849013614168e-05
+- -0.0
+- -0.0
+- -0.0
+- -0.0
+- 0.0
+- 0.0
+- 0.0
+effort:
+- -4.39623047631315e-45
+- 27.272787655101098
+- -4.39623047631315e-45
+- -4.39623047631315e-45
+- -4.39623047631315e-45
+- -4.39623047631315e-45
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+---
+hello-robot@stretch-se3-3103:~$ 
+
