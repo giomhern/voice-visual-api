@@ -59,7 +59,7 @@ def main():
 
     node.send_goal(
         joint_names=['joint_lift', 'wrist_extension', 'joint_wrist_yaw'],
-        positions=[0.5, 0.1, 0.0],
+        positions=[0.9180733020918228, 0.34708226646402623, 0.006391586616190172],
         duration_sec=2
     )
 
