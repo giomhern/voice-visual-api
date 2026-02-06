@@ -8,6 +8,7 @@ from typing import Dict, Optional, List
 
 import rclpy
 from rclpy.action import ActionClient
+from rclpy.node import Node
 from std_srvs.srv import Trigger
 
 from control_msgs.action import FollowJointTrajectory
@@ -22,19 +23,14 @@ from .base_motion import BaseMotion
 # -----------------------------
 @dataclass
 class CleanSurfaceConfig:
-    # Correct default for your system (you confirmed):
     service_name: str = "/clean_surface/trigger_clean_surface"
-    # Give bringup time; 2s is often too short on real launches
     wait_for_service_s: float = 10.0
 
 
 class CleanSurfaceClient:
-    """
-    Minimal client to trigger Hello Robot's clean_surface demo.
-    Triggers via std_srvs/srv/Trigger.
-    """
+    """Minimal client to trigger Hello Robot's clean_surface demo (std_srvs/srv/Trigger)."""
 
-    def __init__(self, node, cfg: Optional[CleanSurfaceConfig] = None):
+    def __init__(self, node: Node, cfg: Optional[CleanSurfaceConfig] = None):
         self.node = node
         self.cfg = cfg or CleanSurfaceConfig()
         self._client = node.create_client(Trigger, self.cfg.service_name)
@@ -81,10 +77,7 @@ class CleanSurfaceClient:
 
         return True
 
-    def trigger_sync(self, timeout_s: float = 30.0) -> bool:
-        """
-        Synchronous trigger: blocks until response or timeout.
-        """
+    def trigger_sync(self, timeout_s: float = 60.0) -> bool:
         if not self._ensure_client():
             return False
 
@@ -111,21 +104,19 @@ class CleanSurfaceClient:
 # -----------------------------
 class DeterministicDemos:
     """
-    Demo behaviors for StudyEngine.
-
-    - desk_demo(): setup pipeline + (optional) move to a pre-wipe pose + trigger clean_surface.
-    - transit(): legacy deterministic base motion fallback (only if you enable it).
+    - desk_demo(): (optional) funmap setup + switch to trajectory mode + PRE-WIPE ACTION GOAL + trigger clean_surface
+    - transit(): legacy deterministic base motion (not used by desk_demo)
     """
 
     def __init__(
         self,
-        node,
+        node: Node,
         motion_enabled: bool = False,
         distances: Optional[Dict[str, float]] = None,
         cmd_vel_topic: str = "/stretch/cmd_vel",
         odom_topic: str = "/odom",
         clean_surface_service: str = "/clean_surface/trigger_clean_surface",
-        # Setup services
+        # Setup services (best-effort)
         funmap_head_scan_srv: str = "/funmap/trigger_head_scan",
         funmap_local_loc_srv: str = "/funmap/trigger_local_localization",
         switch_to_traj_srv: str = "/switch_to_trajectory_mode",
@@ -140,7 +131,7 @@ class DeterministicDemos:
         self.cmd_vel_topic = str(cmd_vel_topic)
         self.odom_topic = str(odom_topic)
 
-        # Base motion helper (legacy / fallback ONLY — do not use for turning while FUNMAP is active)
+        # Legacy base motion helper (NOT used in desk_demo)
         self.motion = BaseMotion(self.node, cmd_vel_topic=self.cmd_vel_topic, odom_topic=self.odom_topic)
         self.turn_left_rad = math.pi / 2.0
 
@@ -156,7 +147,7 @@ class DeterministicDemos:
         self._srv_traj_mode = self.node.create_client(Trigger, switch_to_traj_srv)
         self._srv_nav_mode = self.node.create_client(Trigger, switch_to_nav_srv)
 
-        # Trajectory action client for pre-wipe positioning
+        # Trajectory action client for pre-wipe pose
         self._traj_action_name = str(traj_action_name)
         self._traj_client = ActionClient(self.node, FollowJointTrajectory, self._traj_action_name)
 
@@ -165,18 +156,10 @@ class DeterministicDemos:
             f"motion_enabled={self.motion_enabled} "
             f"cmd_vel={self.cmd_vel_topic} odom={self.odom_topic} "
             f"clean_surface_service={clean_surface_service} "
-            f"traj_action={self._traj_action_name} "
-            f"head_scan_srv={funmap_head_scan_srv} local_loc_srv={funmap_local_loc_srv} "
-            f"traj_srv={switch_to_traj_srv} nav_srv={switch_to_nav_srv}"
+            f"traj_action={self._traj_action_name}"
         )
 
-    # -----------------------------
-    # Small helpers
-    # -----------------------------
     def _call_trigger_sync(self, client, name: str, timeout_s: float = 5.0) -> bool:
-        """
-        Call a std_srvs/Trigger service and block until completion or timeout.
-        """
         if not client.wait_for_service(timeout_sec=float(timeout_s)):
             self.node.get_logger().warn(f"[SETUP] service not available: {name}")
             return False
@@ -201,20 +184,17 @@ class DeterministicDemos:
         self,
         joint_names: List[str],
         positions: List[float],
-        duration_sec: float = 3.0,
+        duration_sec: float = 2.0,
         server_wait_sec: float = 5.0,
         timeout_sec: float = 30.0,
     ) -> bool:
-        """
-        Send a single-point FollowJointTrajectory goal synchronously.
-        Returns True on success (error_code==0).
-        """
+        """Send one FollowJointTrajectory goal and wait for result. Returns True if error_code==0."""
         if len(joint_names) != len(positions):
-            self.node.get_logger().error("[POSTURE] joint_names and positions length mismatch")
+            self.node.get_logger().error("[PREP] joint_names and positions length mismatch")
             return False
 
         if not self._traj_client.wait_for_server(timeout_sec=float(server_wait_sec)):
-            self.node.get_logger().error(f"[POSTURE] Trajectory action not available: {self._traj_action_name}")
+            self.node.get_logger().error(f"[PREP] Trajectory action not available: {self._traj_action_name}")
             return False
 
         goal = FollowJointTrajectory.Goal()
@@ -222,155 +202,84 @@ class DeterministicDemos:
 
         pt = JointTrajectoryPoint()
         pt.positions = list(positions)
-
-        sec_i = int(duration_sec)
-        nsec_i = int(max(0.0, duration_sec - sec_i) * 1e9)
-        pt.time_from_start = Duration(sec=sec_i, nanosec=nsec_i)
-
+        pt.time_from_start = Duration(sec=int(duration_sec))
         goal.trajectory.points = [pt]
 
-        self.node.get_logger().info(f"[POSTURE] Sending {joint_names} -> {positions} ({duration_sec:.1f}s)")
+        self.node.get_logger().info(f"[PREP] Sending goal {joint_names} -> {positions}")
         send_fut = self._traj_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self.node, send_fut, timeout_sec=float(timeout_sec))
 
         if not send_fut.done():
-            self.node.get_logger().error("[POSTURE] send_goal timed out")
+            self.node.get_logger().error("[PREP] send_goal timed out")
             return False
 
         goal_handle = send_fut.result()
         if not goal_handle.accepted:
-            self.node.get_logger().error("[POSTURE] Goal rejected")
+            self.node.get_logger().error("[PREP] Goal rejected")
             return False
 
         result_fut = goal_handle.get_result_async()
         rclpy.spin_until_future_complete(self.node, result_fut, timeout_sec=float(timeout_sec))
 
         if not result_fut.done():
-            self.node.get_logger().error("[POSTURE] result timed out")
+            self.node.get_logger().error("[PREP] result timed out")
             return False
 
         result = result_fut.result().result
-        # Many controllers also include error_string; guard if missing
         err_str = getattr(result, "error_string", "")
-        self.node.get_logger().info(f"[POSTURE] Result error_code={result.error_code} error_string='{err_str}'")
+        self.node.get_logger().info(f"[PREP] Result error_code={result.error_code} error_string='{err_str}'")
         return int(result.error_code) == 0
 
-    def _go_to_pre_wipe_pose(self) -> bool:
+    def _preprocess_pose_exact(self) -> bool:
         """
-        Move robot into a known-good "pre-wipe" starting posture.
-
-        Uses values you pasted from /stretch/joint_states:
-          joint_lift: 0.8838716489
-          joint_arm_l0..l3: 0.0277522269
-          joint_wrist_yaw: -0.0421844717
-
-        NOTE:
-        - We command arm segments (joint_arm_l0..l3) instead of 'wrist_extension'
-          because some controllers don't accept a synthetic 'wrist_extension' joint.
+        This matches your WORKING test script exactly.
         """
-        lift = 0.8838716489173609
-        arm_seg = 0.02775222692732435
-        wrist_yaw = -0.042184471666855135
-
-        # Do it in stages (easier to debug + less likely to be rejected)
-        ok = self._send_traj(["joint_lift"], [lift], duration_sec=3.0, timeout_sec=30.0)
-        if not ok:
-            return False
-
-        ok = self._send_traj(
-            ["joint_arm_l0", "joint_arm_l1", "joint_arm_l2", "joint_arm_l3"],
-            [arm_seg, arm_seg, arm_seg, arm_seg],
-            duration_sec=4.0,
-            timeout_sec=30.0,
-        )
-        if not ok:
-            return False
-
-        ok = self._send_traj(["joint_wrist_yaw"], [wrist_yaw], duration_sec=2.0, timeout_sec=20.0)
-        return ok
+        joint_names = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
+        positions = [0.9180733020918228, 0.34708226646402623, 0.006391586616190172]
+        return self._send_traj(joint_names, positions, duration_sec=2.0, timeout_sec=30.0)
 
     # -----------------------------
-    # Deterministic base transit (legacy / fallback)
+    # Deterministic base transit (legacy / optional)
     # -----------------------------
     def transit(self, from_loc: str, to_loc: str) -> None:
         if not self.motion_enabled:
             self.node.get_logger().info("[MOTION] transit skipped (motion disabled)")
             return
-
-        from_loc = (from_loc or "").lower().strip()
-        to_loc = (to_loc or "").lower().strip()
-        self.node.get_logger().info(f"[MOTION] transit requested {from_loc} -> {to_loc}")
-
-        def _turn_left():
-            # NOTE: uses cmd_vel under the hood; only safe if FUNMAP is NOT driving.
-            if hasattr(self.motion, "turn_angle"):
-                self.motion.turn_angle(self.turn_left_rad)
-            else:
-                raise RuntimeError("BaseMotion has no turn_angle")
-
-        if from_loc == "door" and to_loc == "desk":
-            d = float(self.distances.get("door_to_desk", 0.0))
-            self.node.get_logger().info(f"[MOTION] door->desk drive {d:.2f}m")
-            if d > 0:
-                self.motion.drive_distance(d)
-
-        elif from_loc == "desk" and to_loc == "bed":
-            d = float(self.distances.get("desk_to_bed", 0.0))
-            self.node.get_logger().info("[MOTION] desk->bed turn left 90 then drive")
-            _turn_left()
-            if d > 0:
-                self.motion.drive_distance(d)
-
-        elif from_loc == "bed" and to_loc == "kitchen":
-            d = float(self.distances.get("bed_to_kitchen", 0.0))
-            self.node.get_logger().info("[MOTION] bed->kitchen turn left 90 then drive")
-            _turn_left()
-            if d > 0:
-                self.motion.drive_distance(d)
-
-        else:
-            self.node.get_logger().warn(f"[MOTION] no deterministic route for {from_loc} -> {to_loc}")
+        self.node.get_logger().warn("[MOTION] transit not used for desk_demo; only legacy paths implemented.")
 
     # -----------------------------
     # Surface cleaning demo pipeline
     # -----------------------------
     def desk_demo(self, thoroughness: str) -> None:
         """
-        Automated setup + optional pre-wipe positioning + trigger clean_surface.
-
-        Pipeline:
-          1) FUNMAP head_scan (best-effort)
-          2) FUNMAP local localization (best-effort)
-          3) Switch to trajectory mode
-          4) Move to pre-wipe pose (so the demo doesn't fail "pre wipe gesture")
-          5) Trigger clean_surface
-
-        IMPORTANT:
-        - Do NOT publish cmd_vel turns here if FUNMAP/nav is active.
+        IMPORTANT: This function does NOT rotate or drive the base.
+        It only:
+          - (best-effort) funmap head scan + localization
+          - switches to trajectory mode
+          - runs your exact preprocessing pose (action goal)
+          - triggers clean_surface
         """
         thoroughness = (thoroughness or "").lower().strip()
-        self.node.get_logger().info(f"[DEMO] Desk surface-clean requested thoroughness='{thoroughness}'")
+        self.node.get_logger().info(f"[DEMO] Desk clean requested thoroughness='{thoroughness}'")
 
-        # 1) Head scan (best effort)
+        # Optional / best-effort setup (comment these out if you want *zero* funmap activity)
         self._call_trigger_sync(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=30.0)
-
-        # 2) Local localization (best effort)
         self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=15.0)
 
-        # 3) Switch to trajectory mode
+        # Switch to trajectory mode (important)
         self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
 
-        # Small settle time sometimes helps joint_states/action server stabilize after mode switch
+        # Small settle
         t0 = time.time()
         while time.time() - t0 < 0.5:
             rclpy.spin_once(self.node, timeout_sec=0.05)
 
-        # 4) Pre-wipe posture
-        if not self._go_to_pre_wipe_pose():
-            self.node.get_logger().error("[DEMO] cannot perform pre wipe gesture (pre-wipe posture failed)")
+        # Preprocessing posture (your working pose)
+        if not self._preprocess_pose_exact():
+            self.node.get_logger().error("[DEMO] Preprocessing pose failed; not triggering clean_surface.")
             return
 
-        # 5) Trigger clean_surface (sync)
+        # Trigger clean_surface
         ok = self.clean_surface.trigger_sync(timeout_s=60.0)
         if not ok:
             self.node.get_logger().error(
@@ -379,12 +288,8 @@ class DeterministicDemos:
             )
             return
 
-        self.node.get_logger().info("[DEMO] clean_surface triggered; it will scan/plan/execute.")
+        self.node.get_logger().info("[DEMO] clean_surface triggered.")
 
-        # Optional: switch back later (do NOT immediately switch; can interrupt trajectories)
-        # self._call_trigger_sync(self._srv_nav_mode, "switch_to_navigation_mode", timeout_s=10.0)
-
-    # Placeholders
     def bed_demo(self, arrangement: str) -> None:
         arrangement = (arrangement or "top").lower().strip()
         self.node.get_logger().info(f"[DEMO] Bed demo placeholder arrangement={arrangement}")
