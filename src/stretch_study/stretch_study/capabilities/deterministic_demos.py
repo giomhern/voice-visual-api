@@ -263,11 +263,11 @@ class DeterministicDemos:
         self.node.get_logger().info(f"[DEMO] Desk clean requested thoroughness='{thoroughness}'")
 
         # Optional / best-effort setup (comment these out if you want *zero* funmap activity)
-        self._call_trigger_sync(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=30.0)
-        self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=15.0)
+        # self._call_trigger_sync(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=30.0)
+        # self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=15.0)
 
-        # Switch to trajectory mode (important)
-        self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
+        # # Switch to trajectory mode (important)
+        # self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
 
         # Small settle
         t0 = time.time()
