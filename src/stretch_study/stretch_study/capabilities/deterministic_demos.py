@@ -235,7 +235,7 @@ class DeterministicDemos:
         This matches your WORKING test script exactly.
         """
         joint_names = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
-        positions = [0.9180733020918228, 0.34708226646402623, 0.006391586616190172]
+        positions = [0.906026669779699, -8.377152024940286e-06, 0.0051132692929521375]
         return self._send_traj(joint_names, positions, duration_sec=2.0, timeout_sec=30.0)
 
     # -----------------------------
@@ -269,10 +269,7 @@ class DeterministicDemos:
         # # Switch to trajectory mode (important)
         # self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
 
-        # Small settle
-        t0 = time.time()
-        while time.time() - t0 < 0.5:
-            rclpy.spin_once(self.node, timeout_sec=0.05)
+        
 
         # Preprocessing posture (your working pose)
         if not self._preprocess_pose_exact():
