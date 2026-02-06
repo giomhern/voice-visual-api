@@ -266,11 +266,10 @@ class DeterministicDemos:
         # self._call_trigger_sync(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=30.0)
         # self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=15.0)
 
-        # # Switch to trajectory mode (important)
-        # self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
+        # Switch to trajectory mode (important)
+        self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
 
-        
-
+    
         # Preprocessing posture (your working pose)
         if not self._preprocess_pose_exact():
             self.node.get_logger().error("[DEMO] Preprocessing pose failed; not triggering clean_surface.")
