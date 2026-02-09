@@ -171,3 +171,23 @@ I got the following results:
 [INFO] [1770410298.581926338] [stretch_joint_state]: Receiving JointState messages
 name: ['joint_lift', 'wrist_extension', 'joint_wrist_yaw']
 position: [0.9180733020918228, 0.34708226646402623, 0.006391586616190172]
+
+
+hello-robot@stretch-se3-3103:~/voice-visual-api/src$ source install/setup.bash
+hello-robot@stretch-se3-3103:~/voice-visual-api/src$ ros2 launch stretch_study clean_surface_patched.launch.py
+[INFO] [launch]: All log files can be found below /home/hello-robot/.ros/log/2026-02-09-15-41-45-486939-stretch-se3-3103-15257
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [clean_surface_patched-1]: process started with pid [15258]
+[clean_surface_patched-1] Traceback (most recent call last):
+[clean_surface_patched-1]   File "/home/hello-robot/voice-visual-api/src/install/stretch_study/lib/stretch_study/clean_surface_patched", line 33, in <module>
+[clean_surface_patched-1]     sys.exit(load_entry_point('stretch_study==0.1.0', 'console_scripts', 'clean_surface_patched')())
+[clean_surface_patched-1]   File "/home/hello-robot/voice-visual-api/src/install/stretch_study/lib/python3.10/site-packages/stretch_study/nodes/clean_surface_patched.py", line 152, in main
+[clean_surface_patched-1]     node = CleanSurfacePatched()
+[clean_surface_patched-1]   File "/home/hello-robot/voice-visual-api/src/install/stretch_study/lib/python3.10/site-packages/stretch_study/nodes/clean_surface_patched.py", line 47, in __init__
+[clean_surface_patched-1]     self.traj_client = ActionClient(
+[clean_surface_patched-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/action/client.py", line 143, in __init__
+[clean_surface_patched-1]     callback_group = node.default_callback_group
+[clean_surface_patched-1]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 304, in default_callback_group
+[clean_surface_patched-1]     return self._default_callback_group
+[clean_surface_patched-1] AttributeError: 'CleanSurfacePatched' object has no attribute '_default_callback_group'. Did you mean: 'default_callback_group'?
+[ERROR] [clean_surface_patched-1]: process has died [pid 15258, exit code 1, cmd '/home/hello-robot/voice-visual-api/src/install/stretch_study/lib/stretch_study/clean_surface_patched --ros-args -r __node:=clean_surface_patched'].
