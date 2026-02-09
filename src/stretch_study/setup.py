@@ -11,10 +11,6 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['stretch_study/launch/study.launch.py']),
         ('share/' + package_name + '/config', ['stretch_study/config/defaults.yaml']),
-        ('share/' + package_name + '/launch', [
-            'stretch_study/launch/study.launch.py',
-            'stretch_study/launch/clean_surface_patched.launch.py',
-        ]),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -31,7 +27,7 @@ setup(
             'voice_assistant_node = stretch_study.nodes.voice_assistant_node:main',
             'cmd_vel_scaler = stretch_study.nodes.cmd_vel_scaler:main',
             "settings_bridge_server = stretch_study.nodes.settings_bridge_server:main",
-            'clean_surface_patched = stretch_study.nodes.clean_surface_patched:main',
+            "clean_surface_exec = stretch_study.nodes.clean_surface_exec:main"
         ],
     },
 )
