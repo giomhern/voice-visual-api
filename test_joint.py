@@ -1,181 +1,124 @@
 #!/usr/bin/env python3
-"""
-Standalone Stretch script:
-  1) switch to navigation mode
-  2) turn left ~90 degrees (cmd_vel)
-  3) switch to trajectory mode
-  4) move arm using FollowJointTrajectory
-
-Run with:
-  python3 stretch_turn_and_pose.py
-"""
-
 import time
-import math
-
 import rclpy
-import rclpy.duration
 from rclpy.node import Node
 from rclpy.action import ActionClient
-
 from std_srvs.srv import Trigger
-from geometry_msgs.msg import Twist
-from builtin_interfaces.msg import Duration
+
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
+from builtin_interfaces.msg import Duration
+
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist
+import math
 
 
-def duration_msg(seconds: float) -> Duration:
-    sec_i = int(seconds)
-    nsec_i = int((seconds - sec_i) * 1e9)
-    return Duration(sec=sec_i, nanosec=nsec_i)
+def yaw_from_odom(msg: Odometry) -> float:
+    q = msg.pose.pose.orientation
+    siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+    cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+    return math.atan2(siny_cosp, cosy_cosp)
 
 
-class StretchTurnAndPose(Node):
+class DeskDemoRunner(Node):
     def __init__(self):
-        super().__init__("stretch_turn_and_pose")
+        super().__init__("desk_demo_runner")
 
-        # Publishers / clients
-        self.cmd_vel_pub = self.create_publisher(Twist, "/stretch/cmd_vel", 10)
+        self.odom = None
+        self.create_subscription(Odometry, "/odom", self._on_odom, 10)
+        self.cmd_pub = self.create_publisher(Twist, "/stretch/cmd_vel", 10)
 
-        self.traj_client = ActionClient(
-            self,
-            FollowJointTrajectory,
-            "/stretch_controller/follow_joint_trajectory",
-        )
+        self.traj = ActionClient(self, FollowJointTrajectory, "/stretch_controller/follow_joint_trajectory")
+        self.clean_srv = self.create_client(Trigger, "/clean_surface/trigger_clean_surface")
 
-        self.srv_nav = self.create_client(Trigger, "/switch_to_navigation_mode")
-        self.srv_traj = self.create_client(Trigger, "/switch_to_trajectory_mode")
+    def _on_odom(self, msg):
+        self.odom = msg
 
-    # -------------------------
-    # Helpers
-    # -------------------------
-    def call_trigger(self, client, name: str, timeout=10.0) -> bool:
-        self.get_logger().info(f"Waiting for service {name}...")
-        if not client.wait_for_service(timeout_sec=timeout):
-            self.get_logger().error(f"Service {name} not available")
-            return False
-
-        future = client.call_async(Trigger.Request())
-        rclpy.spin_until_future_complete(self, future, timeout_sec=timeout)
-
-        if not future.done():
-            self.get_logger().error(f"{name} call timed out")
-            return False
-
-        resp = future.result()
-        self.get_logger().info(f"{name}: success={resp.success} msg='{resp.message}'")
-        time.sleep(0.3)  # controller settle time
-        return bool(resp.success)
-
-    def stop_base(self):
-        msg = Twist()
-        for _ in range(6):
-            self.cmd_vel_pub.publish(msg)
-            time.sleep(0.05)
-        time.sleep(0.3)
-
-    def turn_left_90(self, angular_speed=0.35):
-        """
-        Time-based 90 degree turn.
-        """
-        angle = math.pi / 2.0
-        duration = angle / angular_speed
-
-        twist = Twist()
-        twist.angular.z = angular_speed
-
-        self.get_logger().info("Turning left 90 degrees...")
-        start = time.time()
-        while time.time() - start < duration:
-            self.cmd_vel_pub.publish(twist)
+    def rotate_left_90(self):
+        while self.odom is None:
             time.sleep(0.05)
 
-        self.stop_base()
-        self.get_logger().info("Turn complete")
+        start_yaw = yaw_from_odom(self.odom)
+        target = start_yaw + math.pi / 2.0
 
-    # -------------------------
-    # Arm trajectory
-    # -------------------------
-    def send_arm_pose(self, joint_names, positions):
-        self.get_logger().info("Waiting for trajectory action server...")
-        if not self.traj_client.wait_for_server(timeout_sec=10.0):
-            self.get_logger().error("Trajectory action server not available")
-            return False
+        def wrap(a):
+            while a > math.pi:
+                a -= 2 * math.pi
+            while a < -math.pi:
+                a += 2 * math.pi
+            return a
+
+        target = wrap(target)
+        t = Twist()
+        t.angular.z = 0.4
+
+        t0 = time.time()
+        while time.time() - t0 < 20.0:
+            yaw = yaw_from_odom(self.odom)
+            err = wrap(target - yaw)
+            if abs(err) < 0.03:
+                break
+            self.cmd_pub.publish(t)
+            time.sleep(0.02)
+
+        self.cmd_pub.publish(Twist())
+
+    def send_preprocess_pose(self):
+        self.traj.wait_for_server()
 
         goal = FollowJointTrajectory.Goal()
-        goal.trajectory.joint_names = list(joint_names)
+        goal.trajectory.joint_names = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
 
-        # ---- KEY: start slightly in the future ----
-        start_time = self.get_clock().now() + rclpy.duration.Duration(seconds=1.0)
-        goal.trajectory.header.stamp = start_time.to_msg()
+        pt = JointTrajectoryPoint()
+        pt.positions = [0.9180733020918228, 0.34708226646402623, 0.006391586616190172]
+        pt.time_from_start = Duration(sec=2)
+        goal.trajectory.points = [pt]
 
-        pt1 = JointTrajectoryPoint()
-        pt1.positions = list(positions)
-        pt1.time_from_start = duration_msg(0.5)
+        # stamp "now" (safe)
+        goal.trajectory.header.stamp = self.get_clock().now().to_msg()
 
-        pt2 = JointTrajectoryPoint()
-        pt2.positions = list(positions)
-        pt2.time_from_start = duration_msg(2.0)
+        send_fut = self.traj.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self, send_fut, timeout_sec=30.0)
+        gh = send_fut.result()
+        if not gh.accepted:
+            raise RuntimeError("Preprocess pose rejected")
 
-        goal.trajectory.points = [pt1, pt2]
+        res_fut = gh.get_result_async()
+        rclpy.spin_until_future_complete(self, res_fut, timeout_sec=30.0)
+        res = res_fut.result().result
+        if int(res.error_code) != 0:
+            raise RuntimeError(f"Preprocess pose failed error_code={res.error_code}")
 
-        self.get_logger().info("Sending arm trajectory...")
-        send_future = self.traj_client.send_goal_async(goal)
-        rclpy.spin_until_future_complete(self, send_future, timeout_sec=10.0)
+    def trigger_clean_surface(self):
+        if not self.clean_srv.wait_for_service(timeout_sec=5.0):
+            raise RuntimeError("clean_surface service not available")
 
-        if not send_future.done():
-            self.get_logger().error("send_goal timed out")
-            return False
-
-        goal_handle = send_future.result()
-        if not goal_handle.accepted:
-            self.get_logger().error("Trajectory goal rejected")
-            return False
-
-        result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self, result_future, timeout_sec=30.0)
-
-        result = result_future.result().result
-        self.get_logger().info(
-            f"Arm result: error_code={result.error_code} error_string='{getattr(result, 'error_string', '')}'"
-        )
-
-        return int(result.error_code) == 0
+        fut = self.clean_srv.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self, fut, timeout_sec=120.0)
+        resp = fut.result()
+        if not resp.success:
+            raise RuntimeError(f"clean_surface failed: {resp.message}")
 
 
 def main():
     rclpy.init()
-    node = StretchTurnAndPose()
+    node = DeskDemoRunner()
+    try:
+        node.get_logger().info("Rotate left 90...")
+        node.rotate_left_90()
 
-    # 1) Switch to navigation mode
-    if not node.call_trigger(node.srv_nav, "/switch_to_navigation_mode"):
-        node.get_logger().error("Failed to enter navigation mode")
-        goto_shutdown(node)
+        node.get_logger().info("Preprocess arm pose...")
+        node.send_preprocess_pose()
 
-    # 2) Turn left
-    node.turn_left_90()
+        node.get_logger().info("Trigger clean surface...")
+        node.trigger_clean_surface()
 
-    # 3) Switch to trajectory mode
-    if not node.call_trigger(node.srv_traj, "/switch_to_trajectory_mode"):
-        node.get_logger().error("Failed to enter trajectory mode")
-        goto_shutdown(node)
-
-    # 4) Arm pose
-    node.send_arm_pose(
-        joint_names=["joint_lift", "wrist_extension", "joint_wrist_yaw"],
-        positions = [0.906026669779699, -8.377152024940286e-06, 0.0051132692929521375],
-    )
-
-    node.get_logger().info("Done.")
-    node.destroy_node()
-    rclpy.shutdown()
-
-
-def goto_shutdown(node):
-    node.destroy_node()
-    rclpy.shutdown()
-    raise SystemExit(1)
+        node.get_logger().info("DONE ✅")
+    finally:
+        node.cmd_pub.publish(Twist())
+        node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == "__main__":
