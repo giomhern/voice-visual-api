@@ -14,6 +14,7 @@ from std_srvs.srv import Trigger
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
+from geometry_msgs.msg import Twist
 
 from .base_motion import BaseMotion
 
@@ -104,8 +105,8 @@ class CleanSurfaceClient:
 # -----------------------------
 class DeterministicDemos:
     """
-    - desk_demo(): (optional) funmap setup + switch to trajectory mode + PRE-WIPE ACTION GOAL + trigger clean_surface
-    - transit(): legacy deterministic base motion (not used by desk_demo)
+    desk_demo(): switch to nav -> turn left -> switch to trajectory -> PRE-WIPE ACTION GOAL -> trigger clean_surface
+    transit(): legacy deterministic base motion (not used by desk_demo)
     """
 
     def __init__(
@@ -121,7 +122,7 @@ class DeterministicDemos:
         funmap_local_loc_srv: str = "/funmap/trigger_local_localization",
         switch_to_traj_srv: str = "/switch_to_trajectory_mode",
         switch_to_nav_srv: str = "/switch_to_navigation_mode",
-        # Trajectory action (you verified this works):
+        # Trajectory action:
         traj_action_name: str = "/stretch_controller/follow_joint_trajectory",
         **_ignored_kwargs,
     ):
@@ -131,9 +132,12 @@ class DeterministicDemos:
         self.cmd_vel_topic = str(cmd_vel_topic)
         self.odom_topic = str(odom_topic)
 
-        # Legacy base motion helper (NOT used in desk_demo)
+        # Legacy base motion helper (not required for desk_demo, but kept)
         self.motion = BaseMotion(self.node, cmd_vel_topic=self.cmd_vel_topic, odom_topic=self.odom_topic)
         self.turn_left_rad = math.pi / 2.0
+
+        # cmd_vel publisher for turn
+        self._cmd_vel_pub = self.node.create_publisher(Twist, self.cmd_vel_topic, 10)
 
         # Clean surface trigger client
         self.clean_surface = CleanSurfaceClient(
@@ -180,6 +184,47 @@ class DeterministicDemos:
             self.node.get_logger().warn(f"[SETUP] {name}: call failed: {e}")
             return False
 
+    def _switch_mode(self, client, name: str, timeout_s: float = 10.0) -> bool:
+        ok = self._call_trigger_sync(client, name, timeout_s=timeout_s)
+        # Let controllers settle after mode switch
+        time.sleep(0.25)
+        return ok
+
+    def _stop_base(self, settle_s: float = 0.2) -> None:
+        msg = Twist()
+        msg.linear.x = 0.0
+        msg.angular.z = 0.0
+        for _ in range(5):
+            self._cmd_vel_pub.publish(msg)
+            time.sleep(0.05)
+        time.sleep(settle_s)
+
+    def _turn_left_cmd_vel(
+        self,
+        angle_rad: float,
+        ang_vel_rad_s: float = 0.35,
+        timeout_s: float = 12.0,
+    ) -> bool:
+        """
+        Simple time-based rotation. For better accuracy, replace with odom-based turning.
+        """
+        if abs(angle_rad) < 1e-3:
+            return True
+
+        duration = abs(angle_rad) / max(1e-3, abs(ang_vel_rad_s))
+        duration = min(duration, timeout_s)
+
+        twist = Twist()
+        twist.angular.z = abs(ang_vel_rad_s) * (1.0 if angle_rad > 0 else -1.0)
+
+        t0 = time.time()
+        while (time.time() - t0) < duration:
+            self._cmd_vel_pub.publish(twist)
+            time.sleep(0.05)
+
+        self._stop_base(settle_s=0.3)
+        return True
+
     def _send_traj(
         self,
         joint_names: List[str],
@@ -200,10 +245,21 @@ class DeterministicDemos:
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = list(joint_names)
 
-        pt = JointTrajectoryPoint()
-        pt.positions = list(positions)
-        pt.time_from_start = Duration(sec=int(duration_sec))
-        goal.trajectory.points = [pt]
+        # Stamp now (helps avoid controllers treating trajectory as stale)
+        goal.trajectory.header.stamp = self.node.get_clock().now().to_msg()
+
+        # Many controllers require >= 2 points (fixes: "no trajectory ... enough waypoints")
+        pt1 = JointTrajectoryPoint()
+        pt1.positions = list(positions)
+        pt1.time_from_start = Duration(sec=0, nanosec=int(0.2 * 1e9))
+
+        pt2 = JointTrajectoryPoint()
+        pt2.positions = list(positions)
+        sec_i = int(duration_sec)
+        nsec_i = int((duration_sec - sec_i) * 1e9)
+        pt2.time_from_start = Duration(sec=sec_i, nanosec=nsec_i)
+
+        goal.trajectory.points = [pt1, pt2]
 
         self.node.get_logger().info(f"[PREP] Sending goal {joint_names} -> {positions}")
         send_fut = self._traj_client.send_goal_async(goal)
@@ -232,7 +288,7 @@ class DeterministicDemos:
 
     def _preprocess_pose_exact(self) -> bool:
         """
-        This matches your WORKING test script exactly.
+        Your preprocessing pose.
         """
         joint_names = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
         positions = [0.906026669779699, -8.377152024940286e-06, 0.0051132692929521375]
@@ -252,30 +308,37 @@ class DeterministicDemos:
     # -----------------------------
     def desk_demo(self, thoroughness: str) -> None:
         """
-        IMPORTANT: This function does NOT rotate or drive the base.
-        It only:
-          - (best-effort) funmap head scan + localization
-          - switches to trajectory mode
-          - runs your exact preprocessing pose (action goal)
-          - triggers clean_surface
+        Pipeline:
+          1) switch to navigation mode
+          2) turn left (cmd_vel)
+          3) switch to trajectory mode
+          4) preprocessing arm pose
+          5) trigger clean_surface
         """
         thoroughness = (thoroughness or "").lower().strip()
         self.node.get_logger().info(f"[DEMO] Desk clean requested thoroughness='{thoroughness}'")
 
-        # Optional / best-effort setup (comment these out if you want *zero* funmap activity)
+        # Optional / best-effort setup (uncomment if you want funmap activity)
         # self._call_trigger_sync(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=30.0)
         # self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=15.0)
 
-        # Switch to trajectory mode (important)
-        self._call_trigger_sync(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
+        # 1) NAV mode for base motion
+        self._switch_mode(self._srv_nav_mode, "switch_to_navigation_mode", timeout_s=10.0)
 
-    
-        # Preprocessing posture (your working pose)
+        # 2) Turn left
+        if not self._turn_left_cmd_vel(self.turn_left_rad, ang_vel_rad_s=0.35, timeout_s=12.0):
+            self.node.get_logger().error("[DEMO] Turn-left failed; aborting.")
+            return
+
+        # 3) TRAJ mode for arm
+        self._switch_mode(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
+
+        # 4) Preprocessing posture
         if not self._preprocess_pose_exact():
             self.node.get_logger().error("[DEMO] Preprocessing pose failed; not triggering clean_surface.")
             return
 
-        # Trigger clean_surface
+        # 5) Trigger clean_surface
         ok = self.clean_surface.trigger_sync(timeout_s=60.0)
         if not ok:
             self.node.get_logger().error(
