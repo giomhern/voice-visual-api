@@ -15,6 +15,7 @@ from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
 from geometry_msgs.msg import Twist
+import rclpy.duration
 
 from .base_motion import BaseMotion
 
@@ -245,19 +246,25 @@ class DeterministicDemos:
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = list(joint_names)
 
-        # Stamp now (helps avoid controllers treating trajectory as stale)
-        goal.trajectory.header.stamp = self.node.get_clock().now().to_msg()
+        # ---- KEY FIX: stamp a bit in the FUTURE ----
+        now = self.node.get_clock().now()
+        start = now + rclpy.duration.Duration(seconds=0.5)  # 0.5s lead time
+        goal.trajectory.header.stamp = start.to_msg()
 
-        # Many controllers require >= 2 points (fixes: "no trajectory ... enough waypoints")
+        # ---- Provide >=2 points ----
         pt1 = JointTrajectoryPoint()
         pt1.positions = list(positions)
-        pt1.time_from_start = Duration(sec=0, nanosec=int(0.2 * 1e9))
+        pt1.time_from_start = Duration(sec=0, nanosec=int(0.5 * 1e9))  # first point 0.5s after start
 
         pt2 = JointTrajectoryPoint()
         pt2.positions = list(positions)
         sec_i = int(duration_sec)
         nsec_i = int((duration_sec - sec_i) * 1e9)
         pt2.time_from_start = Duration(sec=sec_i, nanosec=nsec_i)
+
+        # Ensure pt2 is after pt1
+        if pt2.time_from_start.sec == 0 and pt2.time_from_start.nanosec <= pt1.time_from_start.nanosec:
+            pt2.time_from_start = Duration(sec=1, nanosec=0)
 
         goal.trajectory.points = [pt1, pt2]
 
