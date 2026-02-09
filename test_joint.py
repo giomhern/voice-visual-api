@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 """
-Standalone Stretch arm pre-pose script.
+Standalone Stretch script:
+  1) switch to navigation mode
+  2) turn left ~90 degrees (cmd_vel)
+  3) switch to trajectory mode
+  4) move arm using FollowJointTrajectory
 
-Fixes the two common controller rejections:
-1) "trajectory mode does not currently allow execution of goal with start time in the past"
-   -> stamp trajectory start slightly in the FUTURE
-
-2) "no trajectory in goal contains enough waypoints"
-   -> send >= 2 points (many controllers require this)
+Run with:
+  python3 stretch_turn_and_pose.py
 """
 
-import sys
 import time
+import math
 
 import rclpy
-from rclpy.action import ActionClient
+import rclpy.duration
 from rclpy.node import Node
+from rclpy.action import ActionClient
 
+from std_srvs.srv import Trigger
+from geometry_msgs.msg import Twist
 from builtin_interfaces.msg import Duration
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
@@ -28,106 +31,151 @@ def duration_msg(seconds: float) -> Duration:
     return Duration(sec=sec_i, nanosec=nsec_i)
 
 
-class StretchJointMover(Node):
-    def __init__(self, action_name: str = "/stretch_controller/follow_joint_trajectory"):
-        super().__init__("stretch_joint_mover")
-        self._action_name = action_name
-        self._action_client = ActionClient(self, FollowJointTrajectory, self._action_name)
+class StretchTurnAndPose(Node):
+    def __init__(self):
+        super().__init__("stretch_turn_and_pose")
 
-    def send_goal(
-        self,
-        joint_names,
-        positions,
-        duration_sec: float = 2.0,
-        lead_time_sec: float = 0.75,     # start trajectory this far in the future
-        first_point_offset_sec: float = 0.50,  # first point after start time
-        wait_server_sec: float = 10.0,
-        wait_result_sec: float = 30.0,
-    ) -> bool:
-        if len(joint_names) != len(positions):
-            self.get_logger().error("joint_names and positions must have same length")
+        # Publishers / clients
+        self.cmd_vel_pub = self.create_publisher(Twist, "/stretch/cmd_vel", 10)
+
+        self.traj_client = ActionClient(
+            self,
+            FollowJointTrajectory,
+            "/stretch_controller/follow_joint_trajectory",
+        )
+
+        self.srv_nav = self.create_client(Trigger, "/switch_to_navigation_mode")
+        self.srv_traj = self.create_client(Trigger, "/switch_to_trajectory_mode")
+
+    # -------------------------
+    # Helpers
+    # -------------------------
+    def call_trigger(self, client, name: str, timeout=10.0) -> bool:
+        self.get_logger().info(f"Waiting for service {name}...")
+        if not client.wait_for_service(timeout_sec=timeout):
+            self.get_logger().error(f"Service {name} not available")
             return False
 
-        self.get_logger().info(f"Waiting for action server: {self._action_name}")
-        if not self._action_client.wait_for_server(timeout_sec=float(wait_server_sec)):
-            self.get_logger().error("Action server not available")
+        future = client.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self, future, timeout_sec=timeout)
+
+        if not future.done():
+            self.get_logger().error(f"{name} call timed out")
             return False
 
-        goal_msg = FollowJointTrajectory.Goal()
-        goal_msg.trajectory.joint_names = list(joint_names)
+        resp = future.result()
+        self.get_logger().info(f"{name}: success={resp.success} msg='{resp.message}'")
+        time.sleep(0.3)  # controller settle time
+        return bool(resp.success)
 
-        # ---- KEY: stamp trajectory start slightly in the future ----
-        now = self.get_clock().now()
-        start_time = now + rclpy.duration.Duration(seconds=float(lead_time_sec))
-        goal_msg.trajectory.header.stamp = start_time.to_msg()
+    def stop_base(self):
+        msg = Twist()
+        for _ in range(6):
+            self.cmd_vel_pub.publish(msg)
+            time.sleep(0.05)
+        time.sleep(0.3)
 
-        # ---- KEY: provide >= 2 points ----
+    def turn_left_90(self, angular_speed=0.35):
+        """
+        Time-based 90 degree turn.
+        """
+        angle = math.pi / 2.0
+        duration = angle / angular_speed
+
+        twist = Twist()
+        twist.angular.z = angular_speed
+
+        self.get_logger().info("Turning left 90 degrees...")
+        start = time.time()
+        while time.time() - start < duration:
+            self.cmd_vel_pub.publish(twist)
+            time.sleep(0.05)
+
+        self.stop_base()
+        self.get_logger().info("Turn complete")
+
+    # -------------------------
+    # Arm trajectory
+    # -------------------------
+    def send_arm_pose(self, joint_names, positions):
+        self.get_logger().info("Waiting for trajectory action server...")
+        if not self.traj_client.wait_for_server(timeout_sec=10.0):
+            self.get_logger().error("Trajectory action server not available")
+            return False
+
+        goal = FollowJointTrajectory.Goal()
+        goal.trajectory.joint_names = list(joint_names)
+
+        # ---- KEY: start slightly in the future ----
+        start_time = self.get_clock().now() + rclpy.duration.Duration(seconds=1.0)
+        goal.trajectory.header.stamp = start_time.to_msg()
+
         pt1 = JointTrajectoryPoint()
         pt1.positions = list(positions)
-        pt1.time_from_start = duration_msg(float(first_point_offset_sec))
+        pt1.time_from_start = duration_msg(0.5)
 
         pt2 = JointTrajectoryPoint()
         pt2.positions = list(positions)
-        pt2.time_from_start = duration_msg(float(duration_sec))
+        pt2.time_from_start = duration_msg(2.0)
 
-        # Ensure pt2 is strictly after pt1
-        if (pt2.time_from_start.sec < pt1.time_from_start.sec) or (
-            pt2.time_from_start.sec == pt1.time_from_start.sec
-            and pt2.time_from_start.nanosec <= pt1.time_from_start.nanosec
-        ):
-            pt2.time_from_start = duration_msg(pt1.time_from_start.sec + 1.0)
+        goal.trajectory.points = [pt1, pt2]
 
-        goal_msg.trajectory.points = [pt1, pt2]
+        self.get_logger().info("Sending arm trajectory...")
+        send_future = self.traj_client.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self, send_future, timeout_sec=10.0)
 
-        self.get_logger().info(f"Sending goal: {joint_names} -> {positions}")
-        send_future = self._action_client.send_goal_async(goal_msg)
-
-        rclpy.spin_until_future_complete(self, send_future, timeout_sec=float(wait_result_sec))
         if not send_future.done():
             self.get_logger().error("send_goal timed out")
             return False
 
         goal_handle = send_future.result()
         if not goal_handle.accepted:
-            self.get_logger().error("Goal rejected")
+            self.get_logger().error("Trajectory goal rejected")
             return False
 
-        self.get_logger().info("Goal accepted, waiting for result...")
         result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self, result_future, timeout_sec=float(wait_result_sec))
-
-        if not result_future.done():
-            self.get_logger().error("Result timed out")
-            return False
+        rclpy.spin_until_future_complete(self, result_future, timeout_sec=30.0)
 
         result = result_future.result().result
-        err_str = getattr(result, "error_string", "")
-        self.get_logger().info(f"Result: error_code={result.error_code} error_string='{err_str}'")
+        self.get_logger().info(
+            f"Arm result: error_code={result.error_code} error_string='{getattr(result, 'error_string', '')}'"
+        )
 
         return int(result.error_code) == 0
 
 
 def main():
-    action_name = "/stretch_controller/follow_joint_trajectory"
-    if len(sys.argv) > 1:
-        action_name = sys.argv[1]
-
     rclpy.init()
-    node = StretchJointMover(action_name=action_name)
+    node = StretchTurnAndPose()
 
-    ok = node.send_goal(
+    # 1) Switch to navigation mode
+    if not node.call_trigger(node.srv_nav, "/switch_to_navigation_mode"):
+        node.get_logger().error("Failed to enter navigation mode")
+        goto_shutdown(node)
+
+    # 2) Turn left
+    node.turn_left_90()
+
+    # 3) Switch to trajectory mode
+    if not node.call_trigger(node.srv_traj, "/switch_to_trajectory_mode"):
+        node.get_logger().error("Failed to enter trajectory mode")
+        goto_shutdown(node)
+
+    # 4) Arm pose
+    node.send_arm_pose(
         joint_names=["joint_lift", "wrist_extension", "joint_wrist_yaw"],
         positions = [0.906026669779699, -8.377152024940286e-06, 0.0051132692929521375],
-        duration_sec=2.0,
-        lead_time_sec=0.75,
-        first_point_offset_sec=0.50,
-        wait_server_sec=10.0,
-        wait_result_sec=30.0,
     )
 
-    node.get_logger().info(f"Done. success={ok}")
+    node.get_logger().info("Done.")
     node.destroy_node()
     rclpy.shutdown()
+
+
+def goto_shutdown(node):
+    node.destroy_node()
+    rclpy.shutdown()
+    raise SystemExit(1)
 
 
 if __name__ == "__main__":
