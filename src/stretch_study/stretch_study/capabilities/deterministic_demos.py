@@ -246,8 +246,8 @@ class DeterministicDemos:
 
         # ✅ KEY: do NOT put a future start time (or any stamp at all)
         # goal.trajectory.header.stamp = self.node.get_clock().now().to_msg()  # optional
-        goal.trajectory.header.stamp.sec = 0
-        goal.trajectory.header.stamp.nanosec = 0
+        # goal.trajectory.header.stamp.sec = 0
+        # goal.trajectory.header.stamp.nanosec = 0
 
         pt = JointTrajectoryPoint()
         pt.positions = list(positions)
@@ -320,7 +320,7 @@ class DeterministicDemos:
         # self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=15.0)
 
         # 1) NAV mode for base motion
-        self._switch_mode(self._srv_nav_mode, "switch_to_navigation_mode", timeout_s=10.0)
+        self._switch_mode(self._srv_nav_mode, "switch_to_navigation_mode")
 
         # 2) Turn left
         if not self._turn_left_cmd_vel(self.turn_left_rad, ang_vel_rad_s=0.35, timeout_s=12.0):
@@ -328,7 +328,7 @@ class DeterministicDemos:
             return
 
         # 3) TRAJ mode for arm
-        self._switch_mode(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
+        self._switch_mode(self._srv_traj_mode, "switch_to_trajectory_mode")
 
         # 4) Preprocessing posture
         if not self._preprocess_pose_exact():
