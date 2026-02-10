@@ -225,14 +225,15 @@ class DeterministicDemos:
 
         self._stop_base(settle_s=0.3)
         return True
+    
     def _send_traj(
-        self,
-        joint_names: List[str],
-        positions: List[float],
-        duration_sec: float = 2.0,
-        server_wait_sec: float = 5.0,
-        timeout_sec: float = 30.0,
-    ) -> bool:
+    self,
+    joint_names: List[str],
+    positions: List[float],
+    duration_sec: float = 2.0,
+    server_wait_sec: float = 5.0,
+    timeout_sec: float = 30.0,
+) -> bool:
         if len(joint_names) != len(positions):
             self.node.get_logger().error("[PREP] joint_names and positions length mismatch")
             return False
@@ -241,24 +242,65 @@ class DeterministicDemos:
             self.node.get_logger().error(f"[PREP] Trajectory action not available: {self._traj_action_name}")
             return False
 
+        # ---- Get current joint positions from joint_states (ArmCommander style) ----
+        # If you already have a joint_state cache elsewhere, use that instead.
+        current = []
+        js = None
+        t0 = time.time()
+        while time.time() - t0 < 2.0:
+            # This assumes your node has /stretch/joint_states available
+            # and that you already created a subscription in ArmCommander.
+            # If not, do the quick fallback below (zeros).
+            try:
+                js = self.node._latest_joint_state  # only works if you store it somewhere
+            except Exception:
+                js = None
+
+            if js and getattr(js, "name", None) and getattr(js, "position", None):
+                ok = True
+                cur = []
+                for j in joint_names:
+                    if j not in js.name:
+                        ok = False
+                        break
+                    idx = js.name.index(j)
+                    cur.append(float(js.position[idx]))
+                if ok:
+                    current = cur
+                    break
+            time.sleep(0.05)
+
+        # Fallback if you do not have joint_state cached:
+        if not current:
+            self.node.get_logger().warn("[PREP] No cached joint_state; using target as start point.")
+            current = list(positions)
+
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = list(joint_names)
 
-        # ✅ KEY: do NOT put a future start time (or any stamp at all)
-        # goal.trajectory.header.stamp = self.node.get_clock().now().to_msg()  # optional
-        # goal.trajectory.header.stamp.sec = 0
-        # goal.trajectory.header.stamp.nanosec = 0
+        # ✅ IMPORTANT: no future stamp
+        goal.trajectory.header.stamp.sec = 0
+        goal.trajectory.header.stamp.nanosec = 0
 
-        pt = JointTrajectoryPoint()
-        pt.positions = list(positions)
+        # Point 1: current position at t=0.0
+        p0 = JointTrajectoryPoint()
+        p0.positions = list(current)
+        p0.time_from_start = Duration(sec=0, nanosec=0)
 
+        # Point 2: target at t=duration
+        p1 = JointTrajectoryPoint()
+        p1.positions = list(positions)
         sec_i = int(duration_sec)
         nsec_i = int((duration_sec - sec_i) * 1e9)
-        pt.time_from_start = Duration(sec=sec_i, nanosec=nsec_i)
+        p1.time_from_start = Duration(sec=sec_i, nanosec=nsec_i)
 
-        goal.trajectory.points = [pt]
+        # Ensure p1 is after p0
+        if p1.time_from_start.sec == 0 and p1.time_from_start.nanosec == 0:
+            p1.time_from_start = Duration(sec=1, nanosec=0)
 
-        self.node.get_logger().info(f"[PREP] Sending goal {joint_names} -> {positions}")
+        goal.trajectory.points = [p0, p1]
+
+        self.node.get_logger().info(f"[PREP] Sending traj {joint_names} -> {positions}")
         send_fut = self._traj_client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self.node, send_fut, timeout_sec=float(timeout_sec))
 
