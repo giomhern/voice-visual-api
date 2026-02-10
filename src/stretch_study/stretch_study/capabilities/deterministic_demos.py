@@ -227,6 +227,62 @@ class DeterministicDemos:
         return True
 
     def _send_traj(
+    self,
+    joint_names: List[str],
+    positions: List[float],
+    duration_sec: float = 2.0,
+    server_wait_sec: float = 5.0,
+    timeout_sec: float = 30.0,
+) -> bool:
+        if len(joint_names) != len(positions):
+            self.node.get_logger().error("[PREP] joint_names and positions length mismatch")
+            return False
+
+        if not self._traj_client.wait_for_server(timeout_sec=float(server_wait_sec)):
+            self.node.get_logger().error(f"[PREP] Trajectory action not available: {self._traj_action_name}")
+            return False
+
+        goal = FollowJointTrajectory.Goal()
+        goal.trajectory.joint_names = list(joint_names)
+
+        # ✅ KEY: do NOT put a future start time (or any stamp at all)
+        # goal.trajectory.header.stamp = self.node.get_clock().now().to_msg()  # optional
+        goal.trajectory.header.stamp.sec = 0
+        goal.trajectory.header.stamp.nanosec = 0
+
+        pt = JointTrajectoryPoint()
+        pt.positions = list(positions)
+
+        sec_i = int(duration_sec)
+        nsec_i = int((duration_sec - sec_i) * 1e9)
+        pt.time_from_start = Duration(sec=sec_i, nanosec=nsec_i)
+
+        goal.trajectory.points = [pt]
+
+        self.node.get_logger().info(f"[PREP] Sending goal {joint_names} -> {positions}")
+        send_fut = self._traj_client.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self.node, send_fut, timeout_sec=float(timeout_sec))
+
+        if not send_fut.done():
+            self.node.get_logger().error("[PREP] send_goal timed out")
+            return False
+
+        goal_handle = send_fut.result()
+        if not goal_handle.accepted:
+            self.node.get_logger().error("[PREP] Goal rejected")
+            return False
+
+        result_fut = goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self.node, result_fut, timeout_sec=float(timeout_sec))
+
+        if not result_fut.done():
+            self.node.get_logger().error("[PREP] result timed out")
+            return False
+
+        result = result_fut.result().result
+        err_str = getattr(result, "error_string", "")
+        self.node.get_logger().info(f"[PREP] Result error_code={result.error_code} error_string='{err_str}'")
+        return int(result.error_code) == 0
         self,
         joint_names: List[str],
         positions: List[float],
