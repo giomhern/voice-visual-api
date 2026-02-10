@@ -15,7 +15,7 @@ from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
 from geometry_msgs.msg import Twist
-import rclpy.duration
+from sensor_msgs.msg import JointState
 
 from .base_motion import BaseMotion
 
@@ -125,6 +125,7 @@ class DeterministicDemos:
         switch_to_nav_srv: str = "/switch_to_navigation_mode",
         # Trajectory action:
         traj_action_name: str = "/stretch_controller/follow_joint_trajectory",
+        joint_states_topic: str = "/stretch/joint_states",
         **_ignored_kwargs,
     ):
         self.node = node
@@ -139,6 +140,14 @@ class DeterministicDemos:
 
         # cmd_vel publisher for turn
         self._cmd_vel_pub = self.node.create_publisher(Twist, self.cmd_vel_topic, 10)
+
+        # Cache joint states (CRITICAL for 2-point trajectories)
+        self._latest_joint_state: Optional[JointState] = None
+
+        def _on_js(msg: JointState):
+            self._latest_joint_state = msg
+
+        self._js_sub = self.node.create_subscription(JointState, joint_states_topic, _on_js, 10)
 
         # Clean surface trigger client
         self.clean_surface = CleanSurfaceClient(
@@ -160,10 +169,14 @@ class DeterministicDemos:
             "[DEMOS] init "
             f"motion_enabled={self.motion_enabled} "
             f"cmd_vel={self.cmd_vel_topic} odom={self.odom_topic} "
+            f"joint_states={joint_states_topic} "
             f"clean_surface_service={clean_surface_service} "
             f"traj_action={self._traj_action_name}"
         )
 
+    # -----------------------------
+    # Service helpers
+    # -----------------------------
     def _call_trigger_sync(self, client, name: str, timeout_s: float = 5.0) -> bool:
         if not client.wait_for_service(timeout_sec=float(timeout_s)):
             self.node.get_logger().warn(f"[SETUP] service not available: {name}")
@@ -187,10 +200,12 @@ class DeterministicDemos:
 
     def _switch_mode(self, client, name: str, timeout_s: float = 10.0) -> bool:
         ok = self._call_trigger_sync(client, name, timeout_s=timeout_s)
-        # Let controllers settle after mode switch
-        time.sleep(0.25)
+        time.sleep(0.25)  # settle
         return ok
 
+    # -----------------------------
+    # Base helpers
+    # -----------------------------
     def _stop_base(self, settle_s: float = 0.2) -> None:
         msg = Twist()
         msg.linear.x = 0.0
@@ -206,9 +221,7 @@ class DeterministicDemos:
         ang_vel_rad_s: float = 0.35,
         timeout_s: float = 12.0,
     ) -> bool:
-        """
-        Simple time-based rotation. For better accuracy, replace with odom-based turning.
-        """
+        """Simple time-based rotation."""
         if abs(angle_rad) < 1e-3:
             return True
 
@@ -225,15 +238,38 @@ class DeterministicDemos:
 
         self._stop_base(settle_s=0.3)
         return True
-    
+
+    # -----------------------------
+    # Trajectory helpers
+    # -----------------------------
+    def _get_current_joint_positions(self, joint_names: List[str], timeout_s: float = 2.0) -> Optional[List[float]]:
+        """Read latest JointState and return positions for joint_names in order."""
+        t0 = time.time()
+        while time.time() - t0 < timeout_s:
+            rclpy.spin_once(self.node, timeout_sec=0.05)
+            js = self._latest_joint_state
+            if js and js.name and js.position and len(js.name) == len(js.position):
+                try:
+                    out = []
+                    for j in joint_names:
+                        if j not in js.name:
+                            return None
+                        idx = js.name.index(j)
+                        out.append(float(js.position[idx]))
+                    return out
+                except Exception:
+                    return None
+        return None
+
     def _send_traj(
-    self,
-    joint_names: List[str],
-    positions: List[float],
-    duration_sec: float = 2.0,
-    server_wait_sec: float = 5.0,
-    timeout_sec: float = 30.0,
-) -> bool:
+        self,
+        joint_names: List[str],
+        positions: List[float],
+        duration_sec: float = 2.0,
+        server_wait_sec: float = 5.0,
+        timeout_sec: float = 30.0,
+    ) -> bool:
+        """Send FollowJointTrajectory with >=2 points, stamp=0 (Stretch trajectory mode requirement)."""
         if len(joint_names) != len(positions):
             self.node.get_logger().error("[PREP] joint_names and positions length mismatch")
             return False
@@ -242,59 +278,35 @@ class DeterministicDemos:
             self.node.get_logger().error(f"[PREP] Trajectory action not available: {self._traj_action_name}")
             return False
 
-        # ---- Get current joint positions from joint_states (ArmCommander style) ----
-        # If you already have a joint_state cache elsewhere, use that instead.
-        current = []
-        js = None
-        t0 = time.time()
-        while time.time() - t0 < 2.0:
-            # This assumes your node has /stretch/joint_states available
-            # and that you already created a subscription in ArmCommander.
-            # If not, do the quick fallback below (zeros).
-            try:
-                js = self.node._latest_joint_state  # only works if you store it somewhere
-            except Exception:
-                js = None
-
-            if js and getattr(js, "name", None) and getattr(js, "position", None):
-                ok = True
-                cur = []
-                for j in joint_names:
-                    if j not in js.name:
-                        ok = False
-                        break
-                    idx = js.name.index(j)
-                    cur.append(float(js.position[idx]))
-                if ok:
-                    current = cur
-                    break
-            time.sleep(0.05)
-
-        # Fallback if you do not have joint_state cached:
-        if not current:
-            self.node.get_logger().warn("[PREP] No cached joint_state; using target as start point.")
+        current = self._get_current_joint_positions(joint_names, timeout_s=2.0)
+        if current is None:
+            self.node.get_logger().warn("[PREP] Could not read joint_states for start point; using target as start.")
             current = list(positions)
 
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = list(joint_names)
 
-        # ✅ IMPORTANT: no future stamp
+        # ✅ IMPORTANT: Stretch trajectory mode rejects future header stamps
         goal.trajectory.header.stamp.sec = 0
         goal.trajectory.header.stamp.nanosec = 0
 
-        # Point 1: current position at t=0.0
+        # Point 0: start at current position
         p0 = JointTrajectoryPoint()
         p0.positions = list(current)
         p0.time_from_start = Duration(sec=0, nanosec=0)
 
-        # Point 2: target at t=duration
+        # Point 1: target at t=duration
         p1 = JointTrajectoryPoint()
         p1.positions = list(positions)
+
+        if duration_sec <= 0.05:
+            duration_sec = 0.5  # safety minimum
+
         sec_i = int(duration_sec)
         nsec_i = int((duration_sec - sec_i) * 1e9)
         p1.time_from_start = Duration(sec=sec_i, nanosec=nsec_i)
 
-        # Ensure p1 is after p0
+        # Guarantee strictly increasing time
         if p1.time_from_start.sec == 0 and p1.time_from_start.nanosec == 0:
             p1.time_from_start = Duration(sec=1, nanosec=0)
 
@@ -326,9 +338,7 @@ class DeterministicDemos:
         return int(result.error_code) == 0
 
     def _preprocess_pose_exact(self) -> bool:
-        """
-        Your preprocessing pose.
-        """
+        """Your preprocessing pose."""
         joint_names = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
         positions = [0.906026669779699, -8.377152024940286e-06, 0.0051132692929521375]
         return self._send_traj(joint_names, positions, duration_sec=2.0, timeout_sec=30.0)
@@ -357,12 +367,8 @@ class DeterministicDemos:
         thoroughness = (thoroughness or "").lower().strip()
         self.node.get_logger().info(f"[DEMO] Desk clean requested thoroughness='{thoroughness}'")
 
-        # Optional / best-effort setup (uncomment if you want funmap activity)
-        # self._call_trigger_sync(self._srv_head_scan, "funmap/trigger_head_scan", timeout_s=30.0)
-        # self._call_trigger_sync(self._srv_local_loc, "funmap/trigger_local_localization", timeout_s=15.0)
-
         # 1) NAV mode for base motion
-        self._switch_mode(self._srv_nav_mode, "switch_to_navigation_mode")
+        self._switch_mode(self._srv_nav_mode, "switch_to_navigation_mode", timeout_s=10.0)
 
         # 2) Turn left
         if not self._turn_left_cmd_vel(self.turn_left_rad, ang_vel_rad_s=0.35, timeout_s=12.0):
@@ -370,7 +376,7 @@ class DeterministicDemos:
             return
 
         # 3) TRAJ mode for arm
-        self._switch_mode(self._srv_traj_mode, "switch_to_trajectory_mode")
+        self._switch_mode(self._srv_traj_mode, "switch_to_trajectory_mode", timeout_s=10.0)
 
         # 4) Preprocessing posture
         if not self._preprocess_pose_exact():
