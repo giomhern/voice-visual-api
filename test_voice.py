@@ -21,14 +21,19 @@ def main():
         language="en",
         model="base",               # good balance of speed/accuracy
         compute_type="float32",     # safest on Stretch
-        callback=on_text,
-        silence_duration=0.8,       # how long silence = end of utterance
-        vad=True
+        # callback=on_text,
+        # silence_duration=0.8,       # how long silence = end of utterance
+        # vad=True
     )
 
     try:
         recorder.start()
         while True:
+            text = recorder.text()
+            if text:
+                text = text.strip()
+                if text:
+                    print(f"[VOICE INPUT] {text}")
             time.sleep(0.1)
     except KeyboardInterrupt:
         print("\n🛑 Stopping recorder")
