@@ -191,3 +191,6 @@ hello-robot@stretch-se3-3103:~/voice-visual-api/src$ ros2 launch stretch_study c
 [clean_surface_patched-1]     return self._default_callback_group
 [clean_surface_patched-1] AttributeError: 'CleanSurfacePatched' object has no attribute '_default_callback_group'. Did you mean: 'default_callback_group'?
 [ERROR] [clean_surface_patched-1]: process has died [pid 15258, exit code 1, cmd '/home/hello-robot/voice-visual-api/src/install/stretch_study/lib/stretch_study/clean_surface_patched --ros-args -r __node:=clean_surface_patched'].
+
+
+grep -n "def move_to_pose" ~/ament_ws/src/stretch_ros2/hello_helpers/hello_helpers/hello_misc.py
