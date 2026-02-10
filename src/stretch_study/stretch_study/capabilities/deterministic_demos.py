@@ -123,7 +123,7 @@ class DeterministicDemos:
         funmap_local_loc_srv: str = "/funmap/trigger_local_localization",
         switch_to_traj_srv: str = "/switch_to_trajectory_mode",
         switch_to_nav_srv: str = "/switch_to_navigation_mode",
-        switch_to_pos_srv: str = "/switch_to_navigation_mode", 
+        switch_to_pos_srv: str = "/switch_to_position_mode", 
         # Trajectory action:
         traj_action_name: str = "/stretch_controller/follow_joint_trajectory",
         **_ignored_kwargs,
