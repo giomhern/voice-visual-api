@@ -194,3 +194,69 @@ hello-robot@stretch-se3-3103:~/voice-visual-api/src$ ros2 launch stretch_study c
 
 
 grep -n "def move_to_pose" ~/ament_ws/src/stretch_ros2/hello_helpers/hello_helpers/hello_misc.py
+
+
+
+[stretch_driver-5] [INFO] [1770763755.622267399] [stretch_driver]: Changed to mode = trajectory
+[funmap-6] Exception in thread Thread-1 (spin_thread):
+[funmap-6] Traceback (most recent call last):
+[funmap-6]   File "/usr/lib/python3.10/threading.py", line 1016, in _bootstrap_inner
+[funmap-6]     self.run()
+[funmap-6]   File "/usr/lib/python3.10/threading.py", line 953, in run
+[funmap-6]     self._target(*self._args, **self._kwargs)
+[funmap-6]   File "/home/hello-robot/ament_ws/build/hello_helpers/src/hello_helpers/hello_misc.py", line 125, in spin_thread
+[funmap-6]     executor.spin()
+[funmap-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 298, in spin
+[funmap-6]     self.spin_once()
+[funmap-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 828, in spin_once
+[funmap-6]     self._spin_once_impl(timeout_sec)
+[funmap-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 825, in _spin_once_impl
+[funmap-6]     future.result()
+[funmap-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 105, in result
+[funmap-6]     raise self.exception()
+[funmap-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py", line 254, in __call__
+[funmap-6]     self._handler.send(None)
+[funmap-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 463, in handler
+[funmap-6]     await call_coroutine(entity, arg)
+[funmap-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 382, in _execute_subscription
+[funmap-6]     await await_or_execute(sub.callback, msg)
+[funmap-6]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 107, in await_or_execute
+[funmap-6]     return callback(*args)
+[funmap-6]   File "/home/hello-robot/ament_ws/build/stretch_funmap/stretch_funmap/funmap.py", line 1239, in navigate_to_goal_topic_callback
+[funmap-6]     success, message = self.navigate_to_map_pixel(end_xy)
+[funmap-6]   File "/home/hello-robot/ament_ws/build/stretch_funmap/stretch_funmap/funmap.py", line 834, in navigate_to_map_pixel
+[funmap-6]     at_goal = self.move_base.turn(
+[funmap-6]   File "/home/hello-robot/ament_ws/build/stretch_funmap/stretch_funmap/navigate.py", line 402, in turn
+[funmap-6]     self._future_goal = self.node.move_to_pose(pose, blocking=False, duration=move_duration)
+[funmap-6]   File "/home/hello-robot/ament_ws/build/hello_helpers/src/hello_helpers/hello_misc.py", line 192, in move_to_pose
+[funmap-6]     point0.positions.append(self.joint_state.position[self.joint_state.name.index(joint)])
+[funmap-6] ValueError: 'rotate_mobile_base' is not in list
+[funmap-6]    78    546 -7.192685372200968e-01 2.3e+00 2.48e-03  1e-04  1e-04 0:00.5
+[funmap-6] termination on tolfun=0.01 (Tue Feb 10 16:49:16 2026)
+[funmap-6] final/bestever f-value = -7.199746e-01 -7.205214e-01 after 547/535 evaluations
+[funmap-6] incumbent solution: [0.5422000794754062, 0.5715087599733317, 0.2954396189038871]
+[funmap-6] std deviation: [0.00011051499731971217, 0.00010682879889443825, 0.00011666743634299688]
+[funmap-6] Optimization complete.
+[funmap-6] cma_result =
+[funmap-6] {'initial_solution': [0.875, 0.875, 1.1], 'initial_standard_deviation': 0.02, 'options': {'tolfun': 0.01}, 'best_parameters': [0.5422417480754954, 0.5711900965494712, 0.29546024524851516], 'best_parameters_error': -0.7209994222291274, 'num_evals_to_find_best': 366, 'num_evals_total': 435, 'cma_iterations': 62, 'cma_parameter_means': [0.542257852874512, 0.571433040917329, 0.2955588942031217], 'cma_parameter_stddevs': [6.089874808483363e-05, 6.149130618930084e-05, 6.616199449776663e-05]}
+[funmap-6] best_parameters = [240.75533614551998, 253.6084028679652, -81.81590190059393]
+[funmap-6] 
+[funmap-6] target_x = 240.75533614551998 , target_y = 253.6084028679652 , angle_deg = -81.81590190059393
+[funmap-6] combined_robot_pose = {'x_pix': 210.92497592544473, 'y_pix': 221.98757110861263, 'theta_rad': -1.4280308886999402}
+[funmap-6] map_xy_1 = [-0.39470087 -0.00355256]
+[funmap-6] map_ang_rad = -1.428030888699919
+[funmap-6] map_quat = (0.0, 0.0, -0.6548736677390161, 0.7557383669644202)
+[funmap-6] original_robot_map_pose = [-1.275629936308671, -0.9049072794417672, -7.402004586400323e-05]
+[funmap-6] corrected_robot_map_pose = [-0.39470086668398974, -0.0035525599100560967, -1.428030888699919]
+[funmap-6] map_xy_1 = [-0.39470087 -0.00355256]
+[funmap-6] map_ang_rad = -1.4280308886998943
+[funmap-6] Total time to match to the loaded map = 37.842034339904785
+[funmap-6] MaxHeightImage saving to base_filename = /home/hello-robot/stretch_user/debug/scaled_localization_scans/localization_scaled_head_scan_20260210164916_mhi
+[funmap-6] Finished saving.
+[funmap-6] MaxHeightImage saving to base_filename = /home/hello-robot/stretch_user/debug/scaled_localization_scans/localization_scaled_merged_map_20260210164916_mhi
+[funmap-6] Finished saving.
+[funmap-6] original_robot_map_pose_xya = [-9.192463727103473e-06, 1.8573427240653473e-09, -7.402004571596801e-05]
+[funmap-6] corrected_robot_map_pose_xya = [-0.3947008666839906, -0.0035525599100552085, -1.4280308886998943]
+[INFO] [funmap-6]: process has finished cleanly [pid 26866]
+
+
