@@ -297,8 +297,8 @@ class DeterministicDemos:
 
         positions = [
             0.906026669779699,          # lift
-            -8.377152024940286e-06,     # extension
-            0.0051132692929521375,      # wrist_yaw
+            0.10261581340392491,     # extension
+            0.10929613113685194,      # wrist_yaw
             -1.2,                      # head_pan  (← put your value)
             -0.8,                      # head_tilt (← put your value)
         ]
