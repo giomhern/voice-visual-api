@@ -285,14 +285,54 @@ class DeterministicDemos:
         err_str = getattr(result, "error_string", "")
         self.node.get_logger().info(f"[PREP] Result error_code={result.error_code} error_string='{err_str}'")
         return int(result.error_code) == 0
-
+    
     def _preprocess_pose_exact(self) -> bool:
-        """
-        Your preprocessing pose.
-        """
-        joint_names = ["joint_lift", "wrist_extension", "joint_wrist_yaw"]
-        positions = [0.906026669779699, -8.377152024940286e-06, 0.0051132692929521375]
-        return self._send_traj(joint_names, positions, duration_sec=2.0, timeout_sec=30.0)
+        joint_names = [
+            "joint_lift",
+            "wrist_extension",
+            "joint_wrist_yaw",
+            "joint_head_pan",
+            "joint_head_tilt",
+        ]
+
+        positions = [
+            0.906026669779699,          # lift
+            -8.377152024940286e-06,     # extension
+            0.0051132692929521375,      # wrist_yaw
+            -1.2,                      # head_pan  (← put your value)
+            -0.8,                      # head_tilt (← put your value)
+        ]
+
+        if not self._traj_client.wait_for_server(timeout_sec=5.0):
+            self.node.get_logger().error("Trajectory action not available")
+            return False
+
+        goal = FollowJointTrajectory.Goal()
+        goal.trajectory.joint_names = joint_names
+
+        point = JointTrajectoryPoint()
+        point.positions = positions
+        point.time_from_start = Duration(sec=2)
+
+        goal.trajectory.points = [point]
+
+        self.node.get_logger().info("Sending preprocess goal with head movement")
+
+        future = self._traj_client.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self.node, future)
+
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.node.get_logger().error("Goal rejected")
+            return False
+
+        result_future = goal_handle.get_result_async()
+        rclpy.spin_until_future_complete(self.node, result_future)
+
+        result = result_future.result().result
+        self.node.get_logger().info(f"Result error_code={result.error_code}")
+
+        return result.error_code == 0
 
     # -----------------------------
     # Deterministic base transit (legacy / optional)
