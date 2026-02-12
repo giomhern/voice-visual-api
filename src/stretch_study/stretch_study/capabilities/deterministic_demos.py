@@ -287,52 +287,66 @@ class DeterministicDemos:
         return int(result.error_code) == 0
     
     def _preprocess_pose_exact(self) -> bool:
-        joint_names = [
-            "joint_lift",
-            "wrist_extension",
-            "joint_wrist_yaw",
-            "joint_head_pan",
-            "joint_head_tilt",
-        ]
+        def send(joints, positions, duration=2):
+            goal = FollowJointTrajectory.Goal()
+            goal.trajectory.joint_names = joints
 
-        positions = [
-            0.906026669779699,          # lift
-            -8.377152024940286e-06,     # extension
-            0.0051132692929521375,      # wrist_yaw
-            -1.2,                      # head_pan  (← put your value)
-            -0.8,                      # head_tilt (← put your value)
-        ]
+            pt = JointTrajectoryPoint()
+            pt.positions = positions
+            pt.time_from_start = Duration(sec=duration)
 
-        if not self._traj_client.wait_for_server(timeout_sec=5.0):
-            self.node.get_logger().error("Trajectory action not available")
+            goal.trajectory.points = [pt]
+
+            future = self._traj_client.send_goal_async(goal)
+            rclpy.spin_until_future_complete(self.node, future)
+
+            goal_handle = future.result()
+            if not goal_handle.accepted:
+                self.node.get_logger().error("Goal rejected")
+                return False
+
+            result_future = goal_handle.get_result_async()
+            rclpy.spin_until_future_complete(self.node, result_future)
+            result = result_future.result().result
+            return result.error_code == 0
+
+        # Ensure position mode
+        self._switch_mode(self._srv_pos_mode, "switch_to_position_mode")
+
+        # 1️⃣ STOW (retract extension first)
+        if not send(
+            ["wrist_extension", "joint_wrist_yaw"],
+            [0.0, 0.0],
+            duration=2
+        ):
             return False
 
-        goal = FollowJointTrajectory.Goal()
-        goal.trajectory.joint_names = joint_names
-
-        point = JointTrajectoryPoint()
-        point.positions = positions
-        point.time_from_start = Duration(sec=2)
-
-        goal.trajectory.points = [point]
-
-        self.node.get_logger().info("Sending preprocess goal with head movement")
-
-        future = self._traj_client.send_goal_async(goal)
-        rclpy.spin_until_future_complete(self.node, future)
-
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.node.get_logger().error("Goal rejected")
+        # 2️⃣ LIFT UP (safe height)
+        if not send(
+            ["joint_lift"],
+            [0.98],  # your new lift value
+            duration=2
+        ):
             return False
 
-        result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self.node, result_future)
+        # 3️⃣ ARM + WRIST TARGET
+        if not send(
+            ["wrist_extension", "joint_wrist_yaw"],
+            [0.1026, 0.1093],  # new extension + yaw
+            duration=2
+        ):
+            return False
 
-        result = result_future.result().result
-        self.node.get_logger().info(f"Result error_code={result.error_code}")
+        # 4️⃣ HEAD LAST
+        if not send(
+            ["joint_head_pan", "joint_head_tilt"],
+            [-1.7996, -0.7996],
+            duration=2
+        ):
+            return False
 
-        return result.error_code == 0
+        self.node.get_logger().info("Preprocess sequence complete")
+        return True
 
     # -----------------------------
     # Deterministic base transit (legacy / optional)
