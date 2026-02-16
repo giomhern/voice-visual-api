@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import math, time
+import math
+import time
 from typing import Optional, Tuple
 
 import rclpy
@@ -13,39 +14,41 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
 
 
-class LookAtFace(Node):
+class StretchTrackFaceMarkers(Node):
     def __init__(self):
-        super().__init__("look_at_face")
+        super().__init__("stretch_track_face_markers")
 
-        # topics
+        # ---- Params (override via --ros-args -p ...) ----
         self.declare_parameter("marker_array_topic", "/faces/marker_array")
         self.declare_parameter("joint_states_topic", "/joint_states")
 
-        # verify on your robot: `ros2 action list | grep -i trajectory`
+        # Check with: ros2 action list | grep -i trajectory
         self.declare_parameter("traj_action", "/stretch_controller/follow_joint_trajectory")
 
-        # verify on your robot: `ros2 topic echo /joint_states --once`
+        # Check with: ros2 topic echo /joint_states --once
         self.declare_parameter("head_pan_joint", "joint_head_pan")
         self.declare_parameter("head_tilt_joint", "joint_head_tilt")
 
-        # behavior
-        self.declare_parameter("label_contains", "face")
-        self.declare_parameter("stale_s", 0.6)
+        # Which marker to use
+        self.declare_parameter("label_contains", "face")  # marker.text contains label
+        self.declare_parameter("pick", "closest_z")       # closest_z or largest_box
+        self.declare_parameter("stale_s", 0.8)
 
-        # controller gains
-        self.declare_parameter("kp_yaw", 1.1)
-        self.declare_parameter("kp_pitch", 1.1)
+        # Control tuning
+        self.declare_parameter("rate_hz", 10.0)
+        self.declare_parameter("kp_yaw", 1.0)
+        self.declare_parameter("kp_pitch", 1.0)
         self.declare_parameter("max_step_rad", 0.18)
 
-        # sign flips if motion is reversed
+        # Flip these if motion is reversed
         self.declare_parameter("yaw_sign", 1.0)
         self.declare_parameter("pitch_sign", 1.0)
 
-        # joint limits (tweak if needed)
+        # Limits (safe defaults; adjust to your setup)
         self.declare_parameter("pan_limits", [-2.8, 2.8])
         self.declare_parameter("tilt_limits", [-1.5, 1.2])
 
-        # state
+        # ---- State ----
         self.pan = 0.0
         self.tilt = 0.0
         self.have_joints = False
@@ -53,7 +56,7 @@ class LookAtFace(Node):
         self.last_xyz: Optional[Tuple[float, float, float]] = None
         self.last_t = 0.0
 
-        # ROS I/O
+        # ---- ROS ----
         self.create_subscription(
             MarkerArray,
             self.get_parameter("marker_array_topic").value,
@@ -69,7 +72,11 @@ class LookAtFace(Node):
 
         self.traj = ActionClient(self, FollowJointTrajectory, self.get_parameter("traj_action").value)
 
-        self.timer = self.create_timer(0.1, self.tick)  # 10 Hz
+        rate = float(self.get_parameter("rate_hz").value)
+        self.timer = self.create_timer(1.0 / max(rate, 1e-6), self.tick)
+
+        self.get_logger().info("Tracking node started.")
+        self.get_logger().info(f"Listening to {self.get_parameter('marker_array_topic').value}")
 
     def on_joint_states(self, msg: JointState):
         pan_name = self.get_parameter("head_pan_joint").value
@@ -82,8 +89,10 @@ class LookAtFace(Node):
 
     def on_markers(self, msg: MarkerArray):
         want = self.get_parameter("label_contains").value.lower()
+        pick = self.get_parameter("pick").value
+
         best = None
-        best_depth = None
+        best_score = None
 
         for m in msg.markers:
             if m.type != Marker.CUBE:
@@ -95,10 +104,25 @@ class LookAtFace(Node):
             y = float(m.pose.position.y)
             z = float(m.pose.position.z)
 
-            # choose closest in depth (z forward)
-            if best is None or z < best_depth:
+            if z <= 1e-3:
+                continue
+
+            if pick == "largest_box":
+                # marker.scale holds box size (meters); use volume-ish heuristic
+                sx = float(m.scale.x)
+                sy = float(m.scale.y)
+                sz = float(m.scale.z)
+                score = sx * sy * sz
+                # maximize
+                better = (best is None) or (score > best_score)
+            else:
+                # closest in depth (z forward): minimize z
+                score = z
+                better = (best is None) or (score < best_score)
+
+            if better:
                 best = (x, y, z)
-                best_depth = z
+                best_score = score
 
         if best is not None:
             self.last_xyz = best
@@ -111,14 +135,14 @@ class LookAtFace(Node):
     def tick(self):
         if not self.have_joints or self.last_xyz is None:
             return
-        if time.time() - self.last_t > float(self.get_parameter("stale_s").value):
+
+        stale_s = float(self.get_parameter("stale_s").value)
+        if time.time() - self.last_t > stale_s:
             return
 
         x, y, z = self.last_xyz
-        if z <= 1e-3:
-            return
 
-        # optical frame typical: x right, y down, z forward
+        # Optical frame typical: x right, y down, z forward
         yaw_err = math.atan2(x, z) * float(self.get_parameter("yaw_sign").value)
         pitch_err = math.atan2(y, z) * float(self.get_parameter("pitch_sign").value)
 
@@ -135,9 +159,9 @@ class LookAtFace(Node):
         pan_goal = self.clamp(self.pan + pan_step, float(pan_lo), float(pan_hi))
         tilt_goal = self.clamp(self.tilt + tilt_step, float(tilt_lo), float(tilt_hi))
 
-        self.send_traj(pan_goal, tilt_goal)
+        self.send_head_trajectory(pan_goal, tilt_goal)
 
-    def send_traj(self, pan_goal: float, tilt_goal: float):
+    def send_head_trajectory(self, pan_goal: float, tilt_goal: float):
         if not self.traj.wait_for_server(timeout_sec=0.0):
             return
 
@@ -146,6 +170,7 @@ class LookAtFace(Node):
             self.get_parameter("head_pan_joint").value,
             self.get_parameter("head_tilt_joint").value,
         ]
+
         pt = JointTrajectoryPoint()
         pt.positions = [float(pan_goal), float(tilt_goal)]
         pt.time_from_start = Duration(sec=0, nanosec=250_000_000)
@@ -156,7 +181,7 @@ class LookAtFace(Node):
 
 def main():
     rclpy.init()
-    rclpy.spin(LookAtFace())
+    rclpy.spin(StretchTrackFaceMarkers())
     rclpy.shutdown()
 
 
