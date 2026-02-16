@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import math
 import time
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import rclpy
 from rclpy.node import Node
@@ -23,7 +23,6 @@ class FaceTrack(Node):
         self.declare_parameter("traj_action", "/stretch_controller/follow_joint_trajectory")
         self.declare_parameter("head_pan_joint", "joint_head_pan")
         self.declare_parameter("head_tilt_joint", "joint_head_tilt")
-
         self.declare_parameter("label_contains", "face")
 
         self.declare_parameter("rate_hz", 10.0)
@@ -42,8 +41,9 @@ class FaceTrack(Node):
         self.declare_parameter("point_dt_s", 0.35)
         self.declare_parameter("min_goal_period_s", 0.12)
 
-        self.declare_parameter("lock_id", True)
         self.declare_parameter("lock_timeout_s", 1.0)
+        self.declare_parameter("lock_gate_m", 0.25)
+        self.declare_parameter("lock_prefer_id", True)
 
         self.declare_parameter("search_enabled", True)
         self.declare_parameter("search_tilt_rad", -0.35)
@@ -57,16 +57,16 @@ class FaceTrack(Node):
         self.tilt = 0.0
         self.have_joints = False
 
-        self.last_face_xyz: Optional[Tuple[float, float, float]] = None
-        self.last_face_t = 0.0
-        self.last_face_id: Optional[int] = None
+        self.locked = False
+        self.lock_id: Optional[int] = None
+        self.lock_xyz: Optional[Tuple[float, float, float]] = None
+        self.lock_last_seen = 0.0
 
         self.yaw_f = 0.0
         self.pitch_f = 0.0
 
         self.last_goal_sent = 0.0
 
-        self.mode = "SEARCH"
         self.search_dir = 1.0
         self.search_next_hold_until = 0.0
         self.search_target_pan: Optional[float] = None
@@ -87,11 +87,18 @@ class FaceTrack(Node):
             self.tilt = msg.position[idx[tilt_name]]
             self.have_joints = True
 
+    @staticmethod
+    def _dist(a: Tuple[float, float, float], b: Tuple[float, float, float]) -> float:
+        dx = a[0] - b[0]
+        dy = a[1] - b[1]
+        dz = a[2] - b[2]
+        return math.sqrt(dx * dx + dy * dy + dz * dz)
+
     def on_markers(self, msg: MarkerArray):
         want = self.get_parameter("label_contains").value.lower()
-        lock_id = bool(self.get_parameter("lock_id").value)
+        now = time.time()
 
-        candidates = []
+        candidates: List[Tuple[int, float, float, float]] = []
         for m in msg.markers:
             if m.type != Marker.CUBE:
                 continue
@@ -107,21 +114,44 @@ class FaceTrack(Node):
         if not candidates:
             return
 
-        chosen = None
-        if lock_id and self.last_face_id is not None:
-            for cid, x, y, z in candidates:
-                if cid == self.last_face_id:
-                    chosen = (cid, x, y, z)
-                    break
+        lock_timeout = float(self.get_parameter("lock_timeout_s").value)
+        gate = float(self.get_parameter("lock_gate_m").value)
+        prefer_id = bool(self.get_parameter("lock_prefer_id").value)
 
-        if chosen is None:
-            chosen = min(candidates, key=lambda t: t[3])
+        if self.locked and self.lock_xyz is not None and (now - self.lock_last_seen) <= lock_timeout:
+            chosen = None
 
+            if prefer_id and self.lock_id is not None:
+                for cid, x, y, z in candidates:
+                    if cid == self.lock_id:
+                        chosen = (cid, x, y, z)
+                        break
+
+            if chosen is None:
+                lx, ly, lz = self.lock_xyz
+                best = None
+                best_d = None
+                for cid, x, y, z in candidates:
+                    d = self._dist((x, y, z), (lx, ly, lz))
+                    if best is None or d < best_d:
+                        best = (cid, x, y, z)
+                        best_d = d
+                if best is not None and best_d is not None and best_d <= gate:
+                    chosen = best
+
+            if chosen is not None:
+                cid, x, y, z = chosen
+                self.lock_id = cid
+                self.lock_xyz = (x, y, z)
+                self.lock_last_seen = now
+            return
+
+        chosen = min(candidates, key=lambda t: t[3])
         cid, x, y, z = chosen
-        self.last_face_id = cid
-        self.last_face_xyz = (x, y, z)
-        self.last_face_t = time.time()
-        self.mode = "TRACK"
+        self.locked = True
+        self.lock_id = cid
+        self.lock_xyz = (x, y, z)
+        self.lock_last_seen = now
 
     @staticmethod
     def clamp(x, lo, hi):
@@ -133,26 +163,25 @@ class FaceTrack(Node):
 
         now = time.time()
         lock_timeout = float(self.get_parameter("lock_timeout_s").value)
-        face_fresh = self.last_face_xyz is not None and (now - self.last_face_t) <= lock_timeout
+
+        face_fresh = self.locked and self.lock_xyz is not None and (now - self.lock_last_seen) <= lock_timeout
 
         if face_fresh:
-            self.mode = "TRACK"
-        else:
-            if bool(self.get_parameter("search_enabled").value):
-                self.mode = "SEARCH"
-            else:
-                self.mode = "IDLE"
-
-        if self.mode == "TRACK":
             self.track_step(now)
-        elif self.mode == "SEARCH":
+            return
+
+        self.locked = False
+        self.lock_id = None
+        self.lock_xyz = None
+
+        if bool(self.get_parameter("search_enabled").value):
             self.search_step(now)
 
     def track_step(self, now: float):
-        if self.last_face_xyz is None:
+        if self.lock_xyz is None:
             return
 
-        x, y, z = self.last_face_xyz
+        x, y, z = self.lock_xyz
         if z <= 1e-3:
             return
 
