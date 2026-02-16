@@ -19,350 +19,303 @@ name:
 - joint_gripper_finger_right
 
 
-ros2 topic echo /faces/marker_array --once
-markers:
-- header:
-    stamp:
-      sec: 1771277908
-      nanosec: 52556152
-    frame_id: camera_color_optical_frame
-  ns: ''
-  id: 4
-  type: 1
-  action: 0
-  pose:
-    position:
-      x: 0.04429816350401006
-      y: -0.039909376558794334
-      z: 0.9509999752044678
-    orientation:
-      x: 0.3892416602998415
-      y: 0.20459426422107999
-      z: -0.5836982653400133
-      w: 0.6825895193847595
-  scale:
-    x: 0.13322788476305625
-    y: 0.17686695782881134
-    z: 0.01
-  color:
-    r: 0.729411780834198
-    g: 1.0
-    b: 0.0
-    a: 0.5
-  lifetime:
-    sec: 2
-    nanosec: 0
-  frame_locked: false
-  points: []
-  colors: []
-  texture_resource: ''
-  texture:
-    header:
-      stamp:
-        sec: 0
-        nanosec: 0
-      frame_id: ''
-    format: ''
-    data: []
-  uv_coordinates: []
-  text: face
-  mesh_resource: ''
-  mesh_file:
-    filename: ''
-    data: []
-  mesh_use_embedded_materials: false
-- header:
-    stamp:
-      sec: 1771277908
-      nanosec: 52556152
-    frame_id: camera_color_optical_frame
-  ns: ''
-  id: 19
-  type: 8
-  action: 0
-  pose:
-    position:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-    orientation:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-      w: 1.0
-  scale:
-    x: 0.02
-    y: 0.02
-    z: 0.0
-  color:
-    r: 0.0
-    g: 0.0
-    b: 0.0
-    a: 0.0
-  lifetime:
-    sec: 2
-    nanosec: 0
-  frame_locked: false
-  points:
-  - x: 0.028688743596354732
-    y: -0.006811479926660926
-    z: 0.977
-  - x: 0.02558122000916968
-    y: 0.006055909411012188
-    z: 0.981
-  - x: 0.03299649846553293
-    y: -0.03253637823231113
-    z: 0.947
-  - x: 0.03503493501798655
-    y: -0.0501185550092202
-    z: 0.946
-  - x: 0.06362572099218504
-    y: -0.0035786923484917824
-    z: 0.971
-  - x: 0.0753301083607638
-    y: -0.00783330112953755
-    z: 0.971
-  - x: 0.06575379142283572
-    y: 0.0006759164325539858
-    z: 0.971
-  - x: 0.07109790792796282
-    y: -0.02449342079795122
-    z: 0.957
-  - x: 0.08641315083592255
-    y: 0.001748526241758865
-    z: 0.976
-  - x: 0.09292586903807624
-    y: -0.03176511127458902
-    z: 0.955
-  - x: 0.08703449572934255
-    y: -0.00783330112953755
-    z: 0.971
-  - x: 0.1000084856012245
-    y: -0.006783592598404381
-    z: 0.973
-  - x: 0.007321228683916504
-    y: 0.009298647494064418
-    z: 0.983
-  - x: 0.006186875449162271
-    y: 0.0006780047428502391
-    z: 0.974
-  - x: 0.016773551185186447
-    y: -0.008878627983244309
-    z: 0.969
-  - x: 0.01647927835737616
-    y: -0.02540829021980528
-    z: 0.952
-  - x: 0.011144893620650043
-    y: -0.04268344199161467
-    z: 0.942
-  - x: 0.022451946283452866
-    y: -0.061127314486245705
-    z: 0.94
-  - x: 0.02022685084953327
-    y: 0.008213486227595435
-    z: 0.982
-  - x: 0.032093751439333705
-    y: 0.01003768837536294
-    z: 0.9509999752044678
-  - x: 0.04703309412568484
-    y: 0.012490802027622299
-    z: 0.98
-  - x: 0.06068256947739834
-    y: 0.01135903957316086
-    z: 0.975
-  - x: 0.07434255725784364
-    y: 0.010259341067548475
-    z: 0.972
-  - x: 0.08971351919496745
-    y: 0.00817166603295391
-    z: 0.977
-  - x: 0.10087359962039581
-    y: 0.004828969470523553
-    z: 0.9509999752044678
-  - x: 0.11546326438607564
-    y: 0.0006619943466520421
-    z: 0.9509999752044678
-  - x: 0.12692657241625266
-    y: -0.007671955901090978
-    z: 0.9509999752044678
-  - x: 0.1338820409666089
-    y: -0.02505648794273171
-    z: 0.979
-  - x: 0.13053016935821254
-    y: -0.042172016073727926
-    z: 0.978
-  - x: 0.12151867916445534
-    y: -0.05752719450091995
-    z: 0.966
-  - x: 0.11024409212621254
-    y: -0.07189231888657684
-    z: 0.96
-  - x: 0.0938739708436208
-    y: -0.08084826248932846
-    z: 0.954
-  - x: 0.07442725007515995
-    y: -0.08638788990634311
-    z: 0.946
-  - x: 0.05564983023380014
-    y: -0.09034155515183064
-    z: 0.944
-  - x: 0.0347016216827203
-    y: -0.09275087336359866
-    z: 0.937
-  colors:
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  - r: 0.0
-    g: 1.0
-    b: 0.0
-    a: 1.0
-  texture_resource: ''
-  texture:
-    header:
-      stamp:
-        sec: 0
-        nanosec: 0
-      frame_id: ''
-    format: ''
-    data: []
-  uv_coordinates: []
-  text: ''
-  mesh_resource: ''
-  mesh_file:
-    filename: ''
-    data: []
-  mesh_use_embedded_materials: false
+ros2 launch stretch_deep_perception stretch_detect_faces.launch.py --show-args
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'broadcast_odom_tf':
+        Whether to broadcast the odom TF. Valid choices are: ['True', 'False']
+        (default: 'False')
+
+    'fail_out_of_range_goal':
+        Whether the motion action servers fail on out-of-range commands. Valid choices are: ['True', 'False']
+        (default: 'False')
+
+    'mode':
+        The mode in which the ROS driver commands the robot. Valid choices are: ['position', 'navigation', 'trajectory', 'gamepad']
+        (default: 'position')
+
+    'calibrated_controller_yaml_file':
+        Path to the calibrated controller args file
+        (default: '/home/hello-robot/ament_ws/install/stretch_core/share/stretch_core/config/controller_calibration_head.yaml')
+
+    'resolution':
+        resolution of the color/depth images low or high
+        (default: 'high')
+
+    'publish_frustum_viz':
+        whether to pub viz of camera frustums
+        (default: 'false')
+
+    'publish_upright_img':
+        whether to pub rotated upright color image
+        (default: 'true')
+
+    'depth_module.profile':
+        depth module profile
+        (default: '1280x720x15')
+
+    'depth_module.depth_profile':
+        depth module profile
+        (default: '1280x720x15')
+
+    'depth_module.infra_profile':
+        depth module profile
+        (default: '1280x720x15')
+
+    'rgb_camera.profile':
+        color image width
+        (default: '1280x720x15')
+
+    'rgb_camera.color_profile':
+        color image width
+        (default: '1280x720x15')
+
+    'align_depth.enable':
+        whether to publish aligned_depth_to_color feed
+        (default: 'true')
+
+    'device_type':
+        ''
+        (default: 'd435')
+
+    'camera_namespace':
+        namespace for camera
+        (default: '')
+
+    'camera_name':
+        camera unique name
+        (default: 'camera')
+
+    'json_file_path':
+        allows advanced configuration
+        (default: '/home/hello-robot/ament_ws/install/stretch_core/share/stretch_core/config/HighAccuracyPreset.json')
+
+    'enable_depth':
+        enable depth stream
+        (default: 'true')
+
+    'enable_color':
+        enable color stream
+        (default: 'true')
+
+    'enable_infra1':
+        enable infra1 stream
+        (default: 'false')
+
+    'enable_infra2':
+        enable infra2 stream
+        (default: 'false')
+
+    'infra_rgb':
+        enable infra2 stream
+        (default: 'false')
+
+    'enable_confidence':
+        enable depth stream
+        (default: 'false')
+
+    'gyro_fps':
+        ''
+        (default: '200')
+
+    'accel_fps':
+        ''
+        (default: '63')
+
+    'enable_gyro':
+        ''
+        (default: 'true')
+
+    'enable_accel':
+        ''
+        (default: 'true')
+
+    'pointcloud.enable':
+        
+        (default: 'true')
+
+    'pointcloud.stream_filter':
+        texture stream for pointcloud
+        (default: '2')
+
+    'pointcloud.stream_index_filter':
+        texture stream index for pointcloud
+        (default: '0')
+
+    'enable_sync':
+        ''
+        (default: 'true')
+
+    'initial_reset':
+        ''
+        (default: 'true')
+
+    'allow_no_texture_points':
+        ''
+        (default: 'true')
+
+    'serial_no':
+        choose device by serial number
+        (default: '''')
+
+    'usb_port_id':
+        choose device by usb port id
+        (default: '''')
+
+    'config_file':
+        yaml config file
+        (default: '''')
+
+    'accelerate_gpu_with_glsl':
+        enable GPU acceleration with GLSL
+        (default: 'false')
+
+    'rosbag_filename':
+        A realsense bagfile to run from as a device
+        (default: '''')
+
+    'log_level':
+        debug log level [DEBUG|INFO|WARN|ERROR|FATAL]
+        (default: 'info')
+
+    'output':
+        pipe node output [screen|log]
+        (default: 'screen')
+
+    'rgb_camera.color_format':
+        color stream format
+        (default: 'RGB8')
+
+    'rgb_camera.enable_auto_exposure':
+        enable/disable auto exposure for color image
+        (default: 'true')
+
+    'enable_infra':
+        enable infra0 stream
+        (default: 'false')
+
+    'depth_module.depth_format':
+        depth stream format
+        (default: 'Z16')
+
+    'depth_module.infra_format':
+        infra0 stream format
+        (default: 'RGB8')
+
+    'depth_module.infra1_format':
+        infra1 stream format
+        (default: 'Y8')
+
+    'depth_module.infra2_format':
+        infra2 stream format
+        (default: 'Y8')
+
+    'depth_module.exposure':
+        Depth module manual exposure value
+        (default: '8500')
+
+    'depth_module.gain':
+        Depth module manual gain value
+        (default: '16')
+
+    'depth_module.hdr_enabled':
+        Depth module hdr enablement flag. Used for hdr_merge filter
+        (default: 'false')
+
+    'depth_module.enable_auto_exposure':
+        enable/disable auto exposure for depth image
+        (default: 'true')
+
+    'depth_module.exposure.1':
+        Depth module first exposure value. Used for hdr_merge filter
+        (default: '7500')
+
+    'depth_module.gain.1':
+        Depth module first gain value. Used for hdr_merge filter
+        (default: '16')
+
+    'depth_module.exposure.2':
+        Depth module second exposure value. Used for hdr_merge filter
+        (default: '1')
+
+    'depth_module.gain.2':
+        Depth module second gain value. Used for hdr_merge filter
+        (default: '16')
+
+    'enable_rgbd':
+        'enable rgbd topic'
+        (default: 'false')
+
+    'unite_imu_method':
+        [0-None, 1-copy, 2-linear_interpolation]
+        (default: '0')
+
+    'clip_distance':
+        ''
+        (default: '-2.')
+
+    'angular_velocity_cov':
+        ''
+        (default: '0.01')
+
+    'linear_accel_cov':
+        ''
+        (default: '0.01')
+
+    'diagnostics_period':
+        Rate of publishing diagnostics. 0=Disabled
+        (default: '0.0')
+
+    'publish_tf':
+        [bool] enable/disable publishing static & dynamic TF
+        (default: 'true')
+
+    'tf_publish_rate':
+        [double] rate in Hz for publishing dynamic TF
+        (default: '0.0')
+
+    'pointcloud.ordered_pc':
+        
+        (default: 'false')
+
+    'pointcloud.allow_no_texture_points':
+        ''
+        (default: 'false')
+
+    'colorizer.enable':
+        enable colorizer filter
+        (default: 'false')
+
+    'decimation_filter.enable':
+        enable_decimation_filter
+        (default: 'false')
+
+    'spatial_filter.enable':
+        enable_spatial_filter
+        (default: 'false')
+
+    'temporal_filter.enable':
+        enable_temporal_filter
+        (default: 'false')
+
+    'disparity_filter.enable':
+        enable_disparity_filter
+        (default: 'false')
+
+    'hole_filling_filter.enable':
+        enable_hole_filling_filter
+        (default: 'false')
+
+    'hdr_merge.enable':
+        hdr_merge filter enablement flag
+        (default: 'false')
+
+    'wait_for_device_timeout':
+        Timeout for waiting for device to connect (Seconds)
+        (default: '-1.')
+
+    'reconnect_timeout':
+        Timeout(seconds) between consequtive reconnection attempts
+        (default: '6.')
+hello-robot@stretch-se3-3103:~$ 
+
