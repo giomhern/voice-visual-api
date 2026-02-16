@@ -317,5 +317,5 @@ Arguments (pass arguments as '<name>:=<value>'):
     'reconnect_timeout':
         Timeout(seconds) between consequtive reconnection attempts
         (default: '6.')
-hello-robot@stretch-se3-3103:~$ 
+hello-robot@stretch-se3-3103:~$ cool 
 
