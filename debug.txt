@@ -319,3 +319,6 @@ Arguments (pass arguments as '<name>:=<value>'):
         (default: '6.')
 hello-robot@stretch-se3-3103:~$ cool 
 
+ros2 action send_goal /stretch_controller/follow_joint_trajectory control_msgs/action/FollowJointTrajectory \
+"{trajectory: {joint_names: ['joint_head_pan','joint_head_tilt'], points: [{positions: [0.3, -0.2], time_from_start: {sec: 1}}]}}"
+
