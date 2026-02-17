@@ -349,3 +349,71 @@ python3 -m pip install --user mediapipe
 [stretch_driver-3] [INFO] [1771362241.994272103] [stretch_driver]: stretch_driver joint_traj action: Time to execute the current goal point = <trajectory_msgs.msg.JointTrajectoryPoint(positions=[0.55, 0.06, 0.0, -0.55, 1.0, 0.045], velocities=[], accelerations=[], effort=[], time_from_start=builtin_interfaces.msg.Duration(sec=2, nanosec=250000000))> exceeded the default_goal_timeout = 10.0
 
 
+
+
+ros2 topic echo /joint_states --once
+header:
+  stamp:
+    sec: 1771363355
+    nanosec: 727272655
+  frame_id: ''
+name:
+- joint_right_wheel
+- joint_left_wheel
+- joint_lift
+- joint_arm_l3
+- joint_arm_l2
+- joint_arm_l1
+- joint_arm_l0
+- joint_wrist_yaw
+- joint_head_pan
+- joint_head_tilt
+- joint_wrist_pitch
+- joint_wrist_roll
+- joint_gripper_finger_right
+- joint_gripper_finger_left
+position:
+- 0.0
+- 0.0
+- 0.847888318130604
+- 0.014180634514987614
+- 0.014180634514987614
+- 0.014180634514987614
+- 0.014180634514987614
+- 0.12911004964704148
+- -0.015608550510398124
+- -0.1876057085211481
+- 0.39423306248660983
+- 0.22856313739496056
+- 0.19720473525899485
+- 0.19720473525899485
+velocity:
+- 0.0
+- 0.0
+- 0.0003631887279435715
+- 5.492380263805246e-05
+- 5.492380263805246e-05
+- 5.492380263805246e-05
+- 5.492380263805246e-05
+- -0.0
+- -0.0
+- -0.0
+- -0.0
+- 0.0
+- 0.0
+- 0.0
+effort:
+- 0.0
+- 0.0
+- 27.272787655101098
+- 4.39623047631315e-45
+- 4.39623047631315e-45
+- 4.39623047631315e-45
+- 4.39623047631315e-45
+- 0.0
+- -0.09765625
+- 0.0
+- -1.6609672691744017
+- 0.0
+- 0.0
+- 0.0
