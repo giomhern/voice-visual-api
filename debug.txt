@@ -325,3 +325,18 @@ ros2 action send_goal /stretch_controller/follow_joint_trajectory control_msgs/a
 {positions: [0.4, -0.3], time_from_start: {sec: 0, nanosec: 600000000}}
 ]}}"
 
+
+
+sudo apt update
+sudo apt install -y \
+  ros-humble-cv-bridge \
+  ros-humble-image-transport \
+  ros-humble-sensor-msgs \
+  ros-humble-control-msgs \
+  ros-humble-trajectory-msgs
+
+sudo apt install -y python3-opencv
+
+pip3 install mediapipe
+
+python3 -m pip install --user mediapipe
