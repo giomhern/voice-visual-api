@@ -340,3 +340,12 @@ sudo apt install -y python3-opencv
 pip3 install mediapipe
 
 python3 -m pip install --user mediapipe
+
+
+[stretch_driver-3] [INFO] [1771362227.954186399] [stretch_driver]: Received goal request
+[stretch_driver-3] [INFO] [1771362227.964163194] [stretch_driver]: stretch_driver joint_traj action: New trajectory received with joint_names = ['joint_lift', 'wrist_extension', 'joint_wrist_yaw', 'joint_wrist_pitch', 'joint_wrist_roll', 'joint_gripper_finger_left']
+[stretch_driver-3] -------------------------------------------
+[stretch_driver-3] Errored goal
+[stretch_driver-3] [INFO] [1771362241.994272103] [stretch_driver]: stretch_driver joint_traj action: Time to execute the current goal point = <trajectory_msgs.msg.JointTrajectoryPoint(positions=[0.55, 0.06, 0.0, -0.55, 1.0, 0.045], velocities=[], accelerations=[], effort=[], time_from_start=builtin_interfaces.msg.Duration(sec=2, nanosec=250000000))> exceeded the default_goal_timeout = 10.0
+
+
