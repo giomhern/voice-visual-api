@@ -21,6 +21,7 @@ JOINTS = [
     "joint_wrist_yaw",
 ]
 
+
 def dur(t: float) -> Duration:
     sec = int(t)
     nanosec = int((t - sec) * 1e9)
@@ -35,69 +36,62 @@ class WaveGreeting(Node):
         self.get_logger().info(f"Waiting for action server: {TRAJ_ACTION_NAME}")
         if not self.client.wait_for_server(timeout_sec=5.0):
             self.get_logger().error(
-                "FollowJointTrajectory server not available. "
-                "Double-check TRAJ_ACTION_NAME with: ros2 action list | grep FollowJointTrajectory"
+                "FollowJointTrajectory server not available.\n"
+                "Run: ros2 action list | grep FollowJointTrajectory\n"
+                "Then set TRAJ_ACTION_NAME to one of those."
             )
             raise RuntimeError("No trajectory action server")
 
-        self.get_logger().info("Connected. Sending wave...")
+        self.get_logger().info("Connected. Sending wave trajectory...")
         self.send_wave()
+
+    def make_point(self, t_s: float, lift: float, wrist_ext: float, wrist_pitch: float, wrist_yaw: float):
+        p = JointTrajectoryPoint()
+        p.positions = [float(lift), float(wrist_ext), float(wrist_pitch), float(wrist_yaw)]
+        p.time_from_start = dur(t_s)
+        return p
 
     def send_wave(self):
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = JOINTS
 
         pts = []
-
-        # 0) Neutral-ish starting pose (small lift, slight reach, wrist bent)
-        # NOTE: these are conservative values; tune if you want bigger motion.
         t = 0.0
-        pts.append(self.pt(
-            t += 0.8,
-            lift=0.55,
-            wrist_ext=0.05,
-            wrist_pitch=-0.6,
-            wrist_yaw=0.0
-        ))
 
-        # Wave oscillations (yaw left-right-left-right-left)
-        amp = 0.55  # radians (~31 degrees). Reduce if too wide.
-        step = 0.45 # seconds between peaks (speed of wave)
+        # Conservative pose values (tune later)
+        lift_up = 0.55
+        wrist_ext = 0.05
+        wrist_pitch = -0.6
 
-        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=+amp))
-        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=-amp))
-        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=+amp))
-        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=-amp))
-        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=+amp))
+        # 1) Move into greeting pose
+        t += 0.8
+        pts.append(self.make_point(t, lift_up, wrist_ext, wrist_pitch, 0.0))
 
-        # Return to neutral
-        pts.append(self.pt(
-            t += 0.8,
-            lift=0.45,
-            wrist_ext=0.0,
-            wrist_pitch=0.0,
-            wrist_yaw=0.0
-        ))
+        # 2) Wave left-right a few times using wrist yaw
+        amp = 0.55   # radians (reduce if too wide)
+        step = 0.45  # seconds between peaks (increase to slow down)
+
+        for yaw in (+amp, -amp, +amp, -amp, +amp):
+            t += step
+            pts.append(self.make_point(t, lift_up, wrist_ext, wrist_pitch, yaw))
+
+        # 3) Return to neutral
+        t += 0.8
+        pts.append(self.make_point(t, 0.45, 0.0, 0.0, 0.0))
 
         goal.trajectory.points = pts
 
-        # Send goal (fire-and-forget)
+        # Send (fire-and-forget)
         self.client.send_goal_async(goal)
         self.get_logger().info("Wave goal sent.")
-
-    def pt(self, t, lift, wrist_ext, wrist_pitch, wrist_yaw):
-        p = JointTrajectoryPoint()
-        p.positions = [float(lift), float(wrist_ext), float(wrist_pitch), float(wrist_yaw)]
-        p.time_from_start = dur(t)
-        return p
 
 
 def main():
     rclpy.init()
     node = WaveGreeting()
-    # Let it run long enough to send + execute the trajectory
-    rclpy.spin_once(node, timeout_sec=6.0)
-    time.sleep(2.0)
+    # Let it stay alive long enough to send the goal and start motion
+    rclpy.spin_once(node, timeout_sec=1.0)
+    time.sleep(7.0)
     node.destroy_node()
     rclpy.shutdown()
 
