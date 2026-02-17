@@ -417,3 +417,56 @@ effort:
 - 0.0
 - 0.0
 - 0.0
+
+
+[stretch_driver-3] [WARN] [1771366053.434921129] [stretch_driver]: Goal state not set, assuming aborted. Goal ID: [202  69  40  92 103 107  71 189 155  63 124  49 189  44 151 197]
+[stretch_driver-3] [INFO] [1771366053.667673389] [stretch_driver]: Received goal request
+[stretch_driver-3] [INFO] [1771366053.676863745] [stretch_driver]: stretch_driver joint_traj action: new traj with 2 points over 0.7 seconds
+[stretch_driver-3] [ERROR] [1771366054.041542432] [stretch_driver]: Error raised in execute callback: Robot.follow_trajectory() got an unexpected keyword argument 'move_to_start_point'
+[stretch_driver-3] Traceback (most recent call last):
+[stretch_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/action/server.py", line 337, in _execute_goal
+[stretch_driver-3]     execute_result = await await_or_execute(execute_callback, goal_handle)
+[stretch_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 107, in await_or_execute
+[stretch_driver-3]     return callback(*args)
+[stretch_driver-3]   File "/home/hello-robot/ament_ws/build/stretch_core/stretch_core/joint_trajectory_server.py", line 308, in execute_cb
+[stretch_driver-3]     if not self.node.robot.follow_trajectory(
+[stretch_driver-3] TypeError: Robot.follow_trajectory() got an unexpected keyword argument 'move_to_start_point'
+[stretch_driver-3] [WARN] [1771366054.044262488] [stretch_driver]: Goal state not set, assuming aborted. Goal ID: [212  99  31 236   9  37  79  25 187  80 166 243  63 219  15 155]
+[stretch_driver-3] [INFO] [1771366054.262877954] [stretch_driver]: Received goal request
+[stretch_driver-3] [INFO] [1771366054.272229702] [stretch_driver]: stretch_driver joint_traj action: new traj with 2 points over 0.7 seconds
+[stretch_driver-3] [ERROR] [1771366054.643253188] [stretch_driver]: Error raised in execute callback: Robot.follow_trajectory() got an unexpected keyword argument 'move_to_start_point'
+[stretch_driver-3] Traceback (most recent call last):
+[stretch_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/action/server.py", line 337, in _execute_goal
+[stretch_driver-3]     execute_result = await await_or_execute(execute_callback, goal_handle)
+[stretch_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 107, in await_or_execute
+[stretch_driver-3]     return callback(*args)
+[stretch_driver-3]   File "/home/hello-robot/ament_ws/build/stretch_core/stretch_core/joint_trajectory_server.py", line 308, in execute_cb
+[stretch_driver-3]     if not self.node.robot.follow_trajectory(
+[stretch_driver-3] TypeError: Robot.follow_trajectory() got an unexpected keyword argument 'move_to_start_point'
+[stretch_driver-3] [WARN] [1771366054.665916359] [stretch_driver]: Goal state not set, assuming aborted. Goal ID: [ 30  29 110 112  55 185  79   3 154 233 241  38 196  84  30 231]
+[stretch_driver-3] [INFO] [1771366054.900032495] [stretch_driver]: Received goal request
+[stretch_driver-3] [INFO] [1771366054.907601614] [stretch_driver]: stretch_driver joint_traj action: new traj with 2 points over 0.7 seconds
+[stretch_driver-3] [ERROR] [1771366055.280257988] [stretch_driver]: Error raised in execute callback: Robot.follow_trajectory() got an unexpected keyword argument 'move_to_start_point'
+[stretch_driver-3] Traceback (most recent call last):
+[stretch_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/action/server.py", line 337, in _execute_goal
+[stretch_driver-3]     execute_result = await await_or_execute(execute_callback, goal_handle)
+[stretch_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 107, in await_or_execute
+[stretch_driver-3]     return callback(*args)
+[stretch_driver-3]   File "/home/hello-robot/ament_ws/build/stretch_core/stretch_core/joint_trajectory_server.py", line 308, in execute_cb
+[stretch_driver-3]     if not self.node.robot.follow_trajectory(
+[stretch_driver-3] TypeError: Robot.follow_trajectory() got an unexpected keyword argument 'move_to_start_point'
+[stretch_driver-3] [WARN] [1771366055.282089478] [stretch_driver]: Goal state not set, assuming aborted. Goal ID: [179 103  81 199 244 253  74 131 164   7 215 142 145 182  78 207]
+[stretch_driver-3] [INFO] [1771366055.505750586] [stretch_driver]: Received goal request
+[stretch_driver-3] [INFO] [1771366055.525325537] [stretch_driver]: stretch_driver joint_traj action: new traj with 2 points over 0.7 seconds
+[stretch_driver-3] [ERROR] [1771366055.947933133] [stretch_driver]: Error raised in execute callback: Robot.follow_trajectory() got an unexpected keyword argument 'move_to_start_point'
+[stretch_driver-3] Traceback (most recent call last):
+[stretch_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/action/server.py", line 337, in _execute_goal
+[stretch_driver-3]     execute_result = await await_or_execute(execute_callback, goal_handle)
+[stretch_driver-3]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 107, in await_or_execute
+[stretch_driver-3]     return callback(*args)
+[stretch_driver-3]   File "/home/hello-robot/ament_ws/build/stretch_core/stretch_core/joint_trajectory_server.py", line 308, in execute_cb
+[stretch_driver-3]     if not self.node.robot.follow_trajectory(
+[stretch_driver-3] TypeError: Robot.follow_trajectory() got an unexpected keyword argument 'move_to_start_point'
+[stretch_driver-3] [WARN] [1771366055.957860010] [stretch_driver]: Goal state not set, assuming aborted. Goal ID: [216 166 225 193 123  38  75  97 162 137 137  20  52   8  49 201]
+
+
