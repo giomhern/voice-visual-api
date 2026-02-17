@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import time
 
 import rclpy
 from rclpy.node import Node
@@ -9,112 +10,94 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
 
 
-# -----------------------------
-# EDIT THESE IF NEEDED
-# -----------------------------
+# 🔧 EDIT THIS after running:
+# ros2 action list | grep FollowJointTrajectory
 TRAJ_ACTION_NAME = "/stretch_controller/follow_joint_trajectory"
 
 JOINTS = [
     "joint_lift",
-    "joint_arm_l0",
-    "joint_wrist_yaw",
+    "wrist_extension",
     "joint_wrist_pitch",
-    "joint_wrist_roll",
+    "joint_wrist_yaw",
 ]
+
+def dur(t: float) -> Duration:
+    sec = int(t)
+    nanosec = int((t - sec) * 1e9)
+    return Duration(sec=sec, nanosec=nanosec)
 
 
 class WaveGreeting(Node):
     def __init__(self):
         super().__init__("wave_greeting")
+        self.client = ActionClient(self, FollowJointTrajectory, TRAJ_ACTION_NAME)
 
-        self.client = ActionClient(
-            self,
-            FollowJointTrajectory,
-            TRAJ_ACTION_NAME,
-        )
+        self.get_logger().info(f"Waiting for action server: {TRAJ_ACTION_NAME}")
+        if not self.client.wait_for_server(timeout_sec=5.0):
+            self.get_logger().error(
+                "FollowJointTrajectory server not available. "
+                "Double-check TRAJ_ACTION_NAME with: ros2 action list | grep FollowJointTrajectory"
+            )
+            raise RuntimeError("No trajectory action server")
 
-        self.get_logger().info("Waiting for trajectory action server...")
-        self.client.wait_for_server()
-        self.get_logger().info("Connected.")
+        self.get_logger().info("Connected. Sending wave...")
+        self.send_wave()
 
-        self.perform_wave()
-
-    def perform_wave(self):
+    def send_wave(self):
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = JOINTS
 
-        points = []
+        pts = []
 
-        # 1️⃣ Raise and extend arm
-        p1 = JointTrajectoryPoint()
-        p1.positions = [
-            0.7,    # lift
-            0.2,    # arm extension
-            0.0,    # wrist yaw
-            -0.5,   # wrist pitch
-            0.0     # wrist roll
-        ]
-        p1.time_from_start = Duration(sec=2)
-        points.append(p1)
+        # 0) Neutral-ish starting pose (small lift, slight reach, wrist bent)
+        # NOTE: these are conservative values; tune if you want bigger motion.
+        t = 0.0
+        pts.append(self.pt(
+            t += 0.8,
+            lift=0.55,
+            wrist_ext=0.05,
+            wrist_pitch=-0.6,
+            wrist_yaw=0.0
+        ))
 
-        # 2️⃣ Wave left
-        p2 = JointTrajectoryPoint()
-        p2.positions = [
-            0.7,
-            0.2,
-            0.6,    # wrist yaw left
-            -0.5,
-            0.0
-        ]
-        p2.time_from_start = Duration(sec=3)
-        points.append(p2)
+        # Wave oscillations (yaw left-right-left-right-left)
+        amp = 0.55  # radians (~31 degrees). Reduce if too wide.
+        step = 0.45 # seconds between peaks (speed of wave)
 
-        # 3️⃣ Wave right
-        p3 = JointTrajectoryPoint()
-        p3.positions = [
-            0.7,
-            0.2,
-            -0.6,   # wrist yaw right
-            -0.5,
-            0.0
-        ]
-        p3.time_from_start = Duration(sec=4)
-        points.append(p3)
+        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=+amp))
+        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=-amp))
+        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=+amp))
+        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=-amp))
+        pts.append(self.pt(t += step, lift=0.55, wrist_ext=0.05, wrist_pitch=-0.6, wrist_yaw=+amp))
 
-        # 4️⃣ Wave left again
-        p4 = JointTrajectoryPoint()
-        p4.positions = [
-            0.7,
-            0.2,
-            0.6,
-            -0.5,
-            0.0
-        ]
-        p4.time_from_start = Duration(sec=5)
-        points.append(p4)
+        # Return to neutral
+        pts.append(self.pt(
+            t += 0.8,
+            lift=0.45,
+            wrist_ext=0.0,
+            wrist_pitch=0.0,
+            wrist_yaw=0.0
+        ))
 
-        # 5️⃣ Return neutral
-        p5 = JointTrajectoryPoint()
-        p5.positions = [
-            0.5,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-        ]
-        p5.time_from_start = Duration(sec=7)
-        points.append(p5)
+        goal.trajectory.points = pts
 
-        goal.trajectory.points = points
-
-        self.get_logger().info("Sending wave trajectory...")
+        # Send goal (fire-and-forget)
         self.client.send_goal_async(goal)
+        self.get_logger().info("Wave goal sent.")
+
+    def pt(self, t, lift, wrist_ext, wrist_pitch, wrist_yaw):
+        p = JointTrajectoryPoint()
+        p.positions = [float(lift), float(wrist_ext), float(wrist_pitch), float(wrist_yaw)]
+        p.time_from_start = dur(t)
+        return p
 
 
 def main():
     rclpy.init()
     node = WaveGreeting()
-    rclpy.spin_once(node, timeout_sec=8)
+    # Let it run long enough to send + execute the trajectory
+    rclpy.spin_once(node, timeout_sec=6.0)
+    time.sleep(2.0)
     node.destroy_node()
     rclpy.shutdown()
 
