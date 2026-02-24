@@ -485,3 +485,22 @@ ros2 topic pub /stretch_controller/joint_trajectory trajectory_msgs/msg/JointTra
     }
   ]
 }"
+
+ros2 topic pub /stretch_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "{"{
+  joint_names: ['joint_head_pan', 'joint_head_tilt'],
+  points: [
+    {
+      positions: [0.0, 0.4],
+      time_from_start: {sec: 1}
+    }
+  ]
+}"
+publisher: beginning loop
+publishing #1: trajectory_msgs.msg.JointTrajectory(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=0, nanosec=0), frame_id=''), joint_names=['joint_head_pan', 'joint_head_tilt'], points=[trajectory_msgs.msg.JointTrajectoryPoint(positions=[0.0, 0.4], velocities=[], accelerations=[], effort=[], time_from_start=builtin_interfaces.msg.Duration(sec=1, nanosec=0))])
+
+publishing #2: trajectory_msgs.msg.JointTrajectory(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=0, nanosec=0), frame_id=''), joint_names=['joint_head_pan', 'joint_head_tilt'], points=[trajectory_msgs.msg.JointTrajectoryPoint(positions=[0.0, 0.4], velocities=[], accelerations=[], effort=[], time_from_start=builtin_interfaces.msg.Duration(sec=1, nanosec=0))])
+
+publishing #3: trajectory_msgs.msg.JointTrajectory(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=0, nanosec=0), frame_id=''), joint_names=['joint_head_pan', 'joint_head_tilt'], points=[trajectory_msgs.msg.JointTrajectoryPoint(positions=[0.0, 0.4], velocities=[], accelerations=[], effort=[], time_from_start=builtin_interfaces.msg.Duration(sec=1, nanosec=0))])
+
+^Chello-robot@stretch-se3-3103:~$ 
+
