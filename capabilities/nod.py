@@ -77,11 +77,11 @@ class HeadConfirmationNod(Node):
         joints = ["joint_head_pan", "joint_head_tilt"]
 
         NOD_COUNT = 3
-        NOD_AMPLITUDE = 0.60  # symmetric amplitude
+        NOD_AMPLITUDE = 0.4  # symmetric amplitude
 
         down = self.tilt0 + NOD_AMPLITUDE
         up = self.tilt0 - NOD_AMPLITUDE
-        neutral = self.tilt0
+        neutral = 0.0
 
         for i in range(NOD_COUNT):
             self.get_logger().info(f"Confirmation nod {i+1}")
