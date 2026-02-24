@@ -20,12 +20,11 @@ def dur(t: float) -> Duration:
     return Duration(sec=sec, nanosec=nanosec)
 
 
-class HeadNodLikeWorking(Node):
+class HeadNod(Node):
     def __init__(self):
-        super().__init__("head_nod_like_working")
+        super().__init__("head_big_nods")
         self.client = ActionClient(self, FollowJointTrajectory, TRAJ_ACTION_NAME)
 
-        # Joint state capture (so we nod relative to current pose)
         self.js = None
         self.create_subscription(JointState, "/joint_states", self._on_js, 10)
 
@@ -37,7 +36,6 @@ class HeadNodLikeWorking(Node):
         self.tilt0 = self._pos("joint_head_tilt")
         self.get_logger().info(f"Start head pose: pan={self.pan0:.3f}, tilt={self.tilt0:.3f}")
 
-        self.get_logger().info(f"Waiting for action server: {TRAJ_ACTION_NAME}")
         if not self.client.wait_for_server(timeout_sec=8.0):
             raise RuntimeError("No trajectory action server")
 
@@ -64,13 +62,6 @@ class HeadNodLikeWorking(Node):
 
         res_future = gh.get_result_async()
         rclpy.spin_until_future_complete(self, res_future, timeout_sec=timeout_sec)
-        if not res_future.done():
-            self.get_logger().error("Timed out waiting for goal result.")
-            return False
-
-        res = res_future.result().result
-        status = res_future.result().status
-        self.get_logger().info(f"Result status={status}, error_code={res.error_code}, error_string='{res.error_string}'")
         return True
 
     def pt(self, t_s, pan, tilt):
@@ -82,60 +73,58 @@ class HeadNodLikeWorking(Node):
     def run(self):
         joints = ["joint_head_pan", "joint_head_tilt"]
 
-        # Make nod obvious
-        down = self.tilt0 + 0.40
-        up = self.tilt0 - 0.4
+        # 🔥 More pronounced nod
+        NOD_COUNT = 3
+        DOWN_AMOUNT = 0.65   # bigger downward motion
+        UP_AMOUNT = -0.25    # less extreme upward
         neutral = self.tilt0
 
-        # -------------------------
-        # GOAL 1: go DOWN and HOLD there (end at DOWN)
-        # -------------------------
-        t = 0.0
-        pts = []
-        t += 0.4
-        pts.append(self.pt(t, self.pan0, neutral))
-        t += 1.0
-        pts.append(self.pt(t, self.pan0, down))
+        down = self.tilt0 + DOWN_AMOUNT
+        up = self.tilt0 + UP_AMOUNT
 
-        self.get_logger().info("Goal 1: head down")
-        if not self.send_goal_and_wait(joints, pts, timeout_sec=4.0):
-            return
-        time.sleep(0.4)  # give you time to *see* it
+        for i in range(NOD_COUNT):
+            self.get_logger().info(f"Nod {i+1}")
 
-        # -------------------------
-        # GOAL 2: go UP and HOLD there
-        # -------------------------
-        t = 0.0
-        pts = []
-        t += 0.4
-        pts.append(self.pt(t, self.pan0, down))
-        t += 1.0
-        pts.append(self.pt(t, self.pan0, up))
+            # ----- DOWN -----
+            t = 0.0
+            pts = []
+            t += 0.4
+            pts.append(self.pt(t, self.pan0, neutral))
+            t += 0.8
+            pts.append(self.pt(t, self.pan0, down))
 
-        self.get_logger().info("Goal 2: head up")
-        if not self.send_goal_and_wait(joints, pts, timeout_sec=4.0):
-            return
-        time.sleep(0.4)
+            if not self.send_goal_and_wait(joints, pts, timeout_sec=4.0):
+                return
+            time.sleep(0.2)
 
-        # -------------------------
-        # GOAL 3: return to NEUTRAL
-        # -------------------------
+            # ----- UP -----
+            t = 0.0
+            pts = []
+            t += 0.4
+            pts.append(self.pt(t, self.pan0, down))
+            t += 0.8
+            pts.append(self.pt(t, self.pan0, up))
+
+            if not self.send_goal_and_wait(joints, pts, timeout_sec=4.0):
+                return
+            time.sleep(0.2)
+
+        # ----- FINAL RETURN TO NEUTRAL -----
         t = 0.0
         pts = []
         t += 0.4
         pts.append(self.pt(t, self.pan0, up))
-        t += 1.0
+        t += 0.8
         pts.append(self.pt(t, self.pan0, neutral))
 
-        self.get_logger().info("Goal 3: back to neutral")
         self.send_goal_and_wait(joints, pts, timeout_sec=4.0)
 
-        self.get_logger().info("Done.")
+        self.get_logger().info("Big nod sequence complete.")
 
 
 def main():
     rclpy.init()
-    node = HeadNodLikeWorking()
+    node = HeadNod()
     node.destroy_node()
     rclpy.shutdown()
 
