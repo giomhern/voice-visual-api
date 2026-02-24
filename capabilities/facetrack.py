@@ -34,11 +34,11 @@ TRAJ_ACTION_NAME = "/stretch_controller/follow_joint_trajectory"
 PAN_JOINT = "joint_head_pan"
 TILT_JOINT = "joint_head_tilt"
 
-MARKER_TOPIC_DEFAULT = "/face_detections/markers"
+MARKER_TOPIC_DEFAULT = "/faces/marker_array"
 
 # Scan params
-LEFT_LIMIT = -1.6
-RIGHT_LIMIT = 1.6
+LEFT_LIMIT = -3
+RIGHT_LIMIT = 3
 STEP = 0.12
 DWELL_S = 0.20
 
