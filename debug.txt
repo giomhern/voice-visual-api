@@ -29,3 +29,15 @@ ros2 action send_goal <ACTION_NAME> control_msgs/action/FollowJointTrajectory "{
     ]
   }
 }"
+
+[INFO] [1771965635.777888866] [head_nod_working]: Waiting for /joint_states...
+[INFO] [1771965635.779459157] [head_nod_working]: Start: pan=-0.002, tilt=0.026
+[INFO] [1771965635.779664522] [head_nod_working]: Waiting for action server: /stretch_controller/follow_joint_trajectory
+[INFO] [1771965635.780048968] [head_nod_working]: Sending nod goal...
+[INFO] [1771965635.783042873] [head_nod_working]: Goal accepted. Waiting for result (and spinning)...
+[INFO] [1771965635.875142061] [head_nod_working]: Result: status=4, error_code=0, error_string='Achieved all target points.'
+
+[stretch_driver-3] [INFO] [1771965635.785767561] [stretch_driver]: stretch_driver joint_traj action: New trajectory received with joint_names = ['joint_head_pan', 'joint_head_tilt']
+[stretch_driver-3] -------------------------------------------
+[stretch_driver-3] Finished goal
+[stretch_driver-3] [INFO] [1771965635.872805182] [stretch_driver]: stretch_driver joint_traj action: Achieved all target points.
