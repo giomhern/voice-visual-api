@@ -18,13 +18,12 @@ def dur(t: float) -> Duration:
     return Duration(sec=sec, nanosec=nanosec)
 
 
-class HeadNod(Node):
+class HeadNodYes(Node):
     def __init__(self):
-        super().__init__("head_nod")
+        super().__init__("head_nod_yes")
 
         self.client = ActionClient(self, FollowJointTrajectory, TRAJ_ACTION_NAME)
 
-        # Get current head position
         self.js = None
         self.create_subscription(JointState, "/joint_states", self._on_js, 10)
 
@@ -36,16 +35,13 @@ class HeadNod(Node):
         self.tilt0 = self._pos("joint_head_tilt")
 
         self.get_logger().info(
-            f"Neutral head position: pan={self.pan0:.3f}, tilt={self.tilt0:.3f}"
+            f"Starting at pan={self.pan0:.3f}, tilt={self.tilt0:.3f}"
         )
 
-        self.get_logger().info(f"Waiting for action server: {TRAJ_ACTION_NAME}")
-        if not self.client.wait_for_server(timeout_sec=8.0):
-            raise RuntimeError("No trajectory action server.")
-
+        self.client.wait_for_server()
         self.send_nod()
 
-    def _on_js(self, msg: JointState):
+    def _on_js(self, msg):
         self.js = msg
 
     def _pos(self, name):
@@ -56,39 +52,34 @@ class HeadNod(Node):
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = ["joint_head_pan", "joint_head_tilt"]
 
-        points = []
+        pts = []
         t = 0.0
 
-        # Nod amplitude (adjust if needed)
-        NOD_AMOUNT = 0.35  # radians (~20 degrees)
+        NOD_AMOUNT = 0.40   # increase for stronger nod
 
-        # Start at neutral
-        p0 = JointTrajectoryPoint()
-        p0.positions = [self.pan0, self.tilt0]
-        p0.time_from_start = dur(0.5)
-        points.append(p0)
+        # Neutral
+        t += 0.5
+        pts.append(self.pt(t, self.pan0, self.tilt0))
 
-        # Nod down
-        p1 = JointTrajectoryPoint()
-        p1.positions = [self.pan0, self.tilt0 + NOD_AMOUNT]
-        p1.time_from_start = dur(1.2)
-        points.append(p1)
+        # Down
+        t += 0.7
+        pts.append(self.pt(t, self.pan0, self.tilt0 + NOD_AMOUNT))
 
-        # Nod up (back past neutral slightly for natural feel)
-        p2 = JointTrajectoryPoint()
-        p2.positions = [self.pan0, self.tilt0 - 0.15]
-        p2.time_from_start = dur(2.0)
-        points.append(p2)
+        # Up (past neutral slightly for realism)
+        t += 0.7
+        pts.append(self.pt(t, self.pan0, self.tilt0 - 0.20))
+
+        # Down again
+        t += 0.7
+        pts.append(self.pt(t, self.pan0, self.tilt0 + NOD_AMOUNT * 0.7))
 
         # Return to neutral
-        p3 = JointTrajectoryPoint()
-        p3.positions = [self.pan0, self.tilt0]
-        p3.time_from_start = dur(2.8)
-        points.append(p3)
+        t += 0.7
+        pts.append(self.pt(t, self.pan0, self.tilt0))
 
-        goal.trajectory.points = points
+        goal.trajectory.points = pts
 
-        self.get_logger().info("Sending nod...")
+        self.get_logger().info("Nodding yes...")
         send_future = self.client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self, send_future)
 
@@ -97,12 +88,18 @@ class HeadNod(Node):
             result_future = gh.get_result_async()
             rclpy.spin_until_future_complete(self, result_future, timeout_sec=6.0)
 
-        self.get_logger().info("Nod complete.")
+        self.get_logger().info("Done.")
+
+    def pt(self, t_s, pan, tilt):
+        p = JointTrajectoryPoint()
+        p.positions = [float(pan), float(tilt)]
+        p.time_from_start = dur(t_s)
+        return p
 
 
 def main():
     rclpy.init()
-    node = HeadNod()
+    node = HeadNodYes()
     node.destroy_node()
     rclpy.shutdown()
 
