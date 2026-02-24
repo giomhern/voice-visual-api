@@ -20,9 +20,9 @@ def dur(t: float) -> Duration:
     return Duration(sec=sec, nanosec=nanosec)
 
 
-class HeadNod(Node):
+class HeadConfirmationNod(Node):
     def __init__(self):
-        super().__init__("head_big_nods")
+        super().__init__("head_confirmation_nods")
         self.client = ActionClient(self, FollowJointTrajectory, TRAJ_ACTION_NAME)
 
         self.js = None
@@ -34,7 +34,10 @@ class HeadNod(Node):
 
         self.pan0 = self._pos("joint_head_pan")
         self.tilt0 = self._pos("joint_head_tilt")
-        self.get_logger().info(f"Start head pose: pan={self.pan0:.3f}, tilt={self.tilt0:.3f}")
+
+        self.get_logger().info(
+            f"Start head pose: pan={self.pan0:.3f}, tilt={self.tilt0:.3f}"
+        )
 
         if not self.client.wait_for_server(timeout_sec=8.0):
             raise RuntimeError("No trajectory action server")
@@ -73,58 +76,58 @@ class HeadNod(Node):
     def run(self):
         joints = ["joint_head_pan", "joint_head_tilt"]
 
-        # 🔥 More pronounced nod
         NOD_COUNT = 3
-        DOWN_AMOUNT = 0.65   # bigger downward motion
-        UP_AMOUNT = -0.25    # less extreme upward
+        NOD_AMPLITUDE = 0.60  # symmetric amplitude
+
+        down = self.tilt0 + NOD_AMPLITUDE
+        up = self.tilt0 - NOD_AMPLITUDE
         neutral = self.tilt0
 
-        down = self.tilt0 + DOWN_AMOUNT
-        up = self.tilt0 + UP_AMOUNT
-
         for i in range(NOD_COUNT):
-            self.get_logger().info(f"Nod {i+1}")
+            self.get_logger().info(f"Confirmation nod {i+1}")
 
-            # ----- DOWN -----
+            # DOWN
             t = 0.0
             pts = []
-            t += 0.4
+            t += 0.3
             pts.append(self.pt(t, self.pan0, neutral))
             t += 0.8
             pts.append(self.pt(t, self.pan0, down))
 
             if not self.send_goal_and_wait(joints, pts, timeout_sec=4.0):
                 return
-            time.sleep(0.2)
 
-            # ----- UP -----
+            time.sleep(0.25)  # slight pause at bottom
+
+            # UP (equal magnitude)
             t = 0.0
             pts = []
-            t += 0.4
+            t += 0.3
             pts.append(self.pt(t, self.pan0, down))
             t += 0.8
             pts.append(self.pt(t, self.pan0, up))
 
             if not self.send_goal_and_wait(joints, pts, timeout_sec=4.0):
                 return
+
             time.sleep(0.2)
 
-        # ----- FINAL RETURN TO NEUTRAL -----
+        # Return to neutral at end
         t = 0.0
         pts = []
-        t += 0.4
+        t += 0.3
         pts.append(self.pt(t, self.pan0, up))
         t += 0.8
         pts.append(self.pt(t, self.pan0, neutral))
 
         self.send_goal_and_wait(joints, pts, timeout_sec=4.0)
 
-        self.get_logger().info("Big nod sequence complete.")
+        self.get_logger().info("Confirmation nod sequence complete.")
 
 
 def main():
     rclpy.init()
-    node = HeadNod()
+    node = HeadConfirmationNod()
     node.destroy_node()
     rclpy.shutdown()
 
