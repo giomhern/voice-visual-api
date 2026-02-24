@@ -17,9 +17,9 @@ def dur(t: float) -> Duration:
     return Duration(sec=sec, nanosec=nanosec)
 
 
-class TwoGoalTwistClap(Node):
+class HelloGreeting(Node):
     def __init__(self):
-        super().__init__("two_goal_twist_clap")
+        super().__init__("hello_greeting")
         self.client = ActionClient(self, FollowJointTrajectory, TRAJ_ACTION_NAME)
 
         self.get_logger().info(f"Waiting for action server: {TRAJ_ACTION_NAME}")
@@ -44,12 +44,17 @@ class TwoGoalTwistClap(Node):
         rclpy.spin_until_future_complete(self, res_future, timeout_sec=timeout_sec)
         return True
 
+    def pt(self, t_s, *positions):
+        p = JointTrajectoryPoint()
+        p.positions = [float(x) for x in positions]
+        p.time_from_start = dur(t_s)
+        return p
+
     def run(self):
-        # -------------------------
-        # GOAL A: twist + reset
-        # (NO GRIPPER to avoid timeout)
-        # Keep it short (<10s)
-        # -------------------------
+
+        # =========================
+        # GOAL A: Twist flourish
+        # =========================
         arm_joints = [
             "joint_lift",
             "wrist_extension",
@@ -62,40 +67,29 @@ class TwoGoalTwistClap(Node):
         wrist_ext = 0.06
         yaw_hold = 0.0
         pitch_hold = -0.55
-
         roll_amp = 1.0
-        step = 0.5
 
         t = 0.0
         ptsA = []
 
-        def ptA(t_s, lift, ext, yaw, pitch, roll):
-            p = JointTrajectoryPoint()
-            p.positions = [float(lift), float(ext), float(yaw), float(pitch), float(roll)]
-            p.time_from_start = dur(t_s)
-            return p
-
         t += 0.8
-        ptsA.append(ptA(t, lift_up, wrist_ext, yaw_hold, pitch_hold, 0.0))
+        ptsA.append(self.pt(t, lift_up, wrist_ext, yaw_hold, pitch_hold, 0.0))
 
         for r in (+roll_amp, -roll_amp, +roll_amp, -roll_amp):
-            t += step
-            ptsA.append(ptA(t, lift_up, wrist_ext, yaw_hold, pitch_hold, r))
+            t += 0.5
+            ptsA.append(self.pt(t, lift_up, wrist_ext, yaw_hold, pitch_hold, r))
 
-        # reset
+        # Reset wrist roll
         t += 0.8
-        ptsA.append(ptA(t, lift_up, wrist_ext, 0.0, pitch_hold, 0.0))
+        ptsA.append(self.pt(t, lift_up, wrist_ext, yaw_hold, pitch_hold, 0.0))
 
-        self.get_logger().info("Sending Goal A (twist+reset)...")
-        okA = self.send_goal_and_wait(arm_joints, ptsA, timeout_sec=10.0)
-        if not okA:
-            self.get_logger().error("Goal A failed/timeout.")
+        self.get_logger().info("Sending twist flourish...")
+        if not self.send_goal_and_wait(arm_joints, ptsA, timeout_sec=10.0):
             return
 
-        # -------------------------
-        # GOAL B: claps only (gripper joint only)
-        # Short (<10s)
-        # -------------------------
+        # =========================
+        # GOAL B: 3 Claps
+        # =========================
         grip_joint = ["joint_gripper_finger_left"]
 
         grip_open = 0.045
@@ -104,34 +98,21 @@ class TwoGoalTwistClap(Node):
         t = 0.0
         ptsB = []
 
-        def ptB(t_s, grip):
-            p = JointTrajectoryPoint()
-            p.positions = [float(grip)]
-            p.time_from_start = dur(t_s)
-            return p
-
-        # 3 claps: close/open repeated
-        clap_step = 0.35
         for _ in range(3):
-            t += clap_step
-            ptsB.append(ptB(t, grip_closed))
-            t += clap_step
-            ptsB.append(ptB(t, grip_open))
+            t += 0.35
+            ptsB.append(self.pt(t, grip_closed))
+            t += 0.35
+            ptsB.append(self.pt(t, grip_open))
 
-        self.get_logger().info("Sending Goal B (3 claps)...")
-        okB = self.send_goal_and_wait(grip_joint, ptsB, timeout_sec=10.0)
-        if not okB:
-            self.get_logger().error(
-                "Goal B failed/timeout. This strongly suggests the gripper should NOT be controlled via FollowJointTrajectory on your setup."
-            )
-            return
+        self.get_logger().info("Sending claps...")
+        self.send_goal_and_wait(grip_joint, ptsB, timeout_sec=10.0)
 
-        self.get_logger().info("Done.")
+        self.get_logger().info("Hello gesture complete.")
 
 
 def main():
     rclpy.init()
-    node = TwoGoalTwistClap()
+    node = HelloGreeting()
     node.destroy_node()
     rclpy.shutdown()
 
