@@ -9,25 +9,26 @@ from builtin_interfaces.msg import Duration
 from sensor_msgs.msg import JointState
 
 
-TRAJ_ACTION_NAME = "/stretch_controller/follow_joint_trajectory"
+ACTION_NAME = "/stretch_controller/follow_joint_trajectory"
 
 
-def dur(t: float) -> Duration:
+def dur(t):
     sec = int(t)
     nanosec = int((t - sec) * 1e9)
     return Duration(sec=sec, nanosec=nanosec)
 
 
-class HeadNodYes(Node):
+class HeadNod(Node):
     def __init__(self):
-        super().__init__("head_nod_yes")
+        super().__init__("head_nod")
 
-        self.client = ActionClient(self, FollowJointTrajectory, TRAJ_ACTION_NAME)
+        self.client = ActionClient(self, FollowJointTrajectory, ACTION_NAME)
 
+        # Wait for joint states
         self.js = None
         self.create_subscription(JointState, "/joint_states", self._on_js, 10)
 
-        self.get_logger().info("Waiting for /joint_states...")
+        self.get_logger().info("Waiting for joint states...")
         while rclpy.ok() and self.js is None:
             rclpy.spin_once(self, timeout_sec=0.2)
 
@@ -55,31 +56,31 @@ class HeadNodYes(Node):
         pts = []
         t = 0.0
 
-        NOD_AMOUNT = 0.40   # increase for stronger nod
+        NOD_AMOUNT = 0.40   # increase for bigger nod
 
-        # Neutral
+        # Neutral (start)
         t += 0.5
         pts.append(self.pt(t, self.pan0, self.tilt0))
 
         # Down
-        t += 0.7
+        t += 0.8
         pts.append(self.pt(t, self.pan0, self.tilt0 + NOD_AMOUNT))
 
-        # Up (past neutral slightly for realism)
-        t += 0.7
-        pts.append(self.pt(t, self.pan0, self.tilt0 - 0.20))
+        # Up
+        t += 0.8
+        pts.append(self.pt(t, self.pan0, self.tilt0 - 0.25))
 
-        # Down again
-        t += 0.7
-        pts.append(self.pt(t, self.pan0, self.tilt0 + NOD_AMOUNT * 0.7))
+        # Down small
+        t += 0.8
+        pts.append(self.pt(t, self.pan0, self.tilt0 + NOD_AMOUNT * 0.6))
 
-        # Return to neutral
-        t += 0.7
+        # Back to neutral
+        t += 0.8
         pts.append(self.pt(t, self.pan0, self.tilt0))
 
         goal.trajectory.points = pts
 
-        self.get_logger().info("Nodding yes...")
+        self.get_logger().info("Nodding...")
         send_future = self.client.send_goal_async(goal)
         rclpy.spin_until_future_complete(self, send_future)
 
@@ -99,7 +100,7 @@ class HeadNodYes(Node):
 
 def main():
     rclpy.init()
-    node = HeadNodYes()
+    node = HeadNod()
     node.destroy_node()
     rclpy.shutdown()
 
