@@ -470,3 +470,18 @@ effort:
 [stretch_driver-3] [WARN] [1771366055.957860010] [stretch_driver]: Goal state not set, assuming aborted. Goal ID: [216 166 225 193 123  38  75  97 162 137 137  20  52   8  49 201]
 
 
+
+ros2 topic pub /stretch_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "{
+  joint_names: ['joint_head_pan', 'joint_head_tilt'],
+  points: [{positions: [0.0, 0.4], time_from_start: {sec: 1}}]
+}"
+
+ros2 topic pub /stretch_controller/joint_trajectory trajectory_msgs/msg/JointTrajectory "{
+  joint_names: ['joint_head_pan', 'joint_head_tilt'],
+  points: [
+    {
+      positions: [0.0, 0.4],
+      time_from_start: {sec: 1}
+    }
+  ]
+}"
