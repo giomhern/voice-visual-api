@@ -84,7 +84,7 @@ class HeadNodLikeWorking(Node):
 
         # Make nod obvious
         down = self.tilt0 + 0.40
-        up = self.tilt0 - 0.25
+        up = self.tilt0 - 0.4
         neutral = self.tilt0
 
         # -------------------------

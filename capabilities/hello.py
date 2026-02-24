@@ -63,10 +63,10 @@ class HelloGreeting(Node):
             "joint_wrist_roll",
         ]
 
-        lift_up = 0.85
+        lift_up = 0.95
         wrist_ext = 0.06
-        yaw_hold = 0.0
-        pitch_hold = -0.55
+        yaw_hold = 1.5
+        pitch_hold = 0
         roll_amp = 1.0
 
         t = 0.0
@@ -75,7 +75,7 @@ class HelloGreeting(Node):
         t += 0.8
         ptsA.append(self.pt(t, lift_up, wrist_ext, yaw_hold, pitch_hold, 0.0))
 
-        for r in (+roll_amp, -roll_amp, +roll_amp, -roll_amp):
+        for r in (+roll_amp, 0.0, -roll_amp, 0.0, +roll_amp, 0.0, -roll_amp, 0.0):
             t += 0.5
             ptsA.append(self.pt(t, lift_up, wrist_ext, yaw_hold, pitch_hold, r))
 
@@ -92,8 +92,8 @@ class HelloGreeting(Node):
         # =========================
         grip_joint = ["joint_gripper_finger_left"]
 
-        grip_open = 0.045
-        grip_closed = 0.005
+        grip_open = 0.2
+        grip_closed = 0.1
 
         t = 0.0
         ptsB = []
