@@ -52,11 +52,6 @@ from stretch_config_loader import StretchConfigLoader, ValueMappings
 # Helpers
 # =============================================================================
 
-GOALS_YAML = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "voice-visual-api-main/src/stretch_study/stretch_study/config/goals.yml",
-)
-
 SPEED_TO_SCALE = {"slow": 0.3, "medium": 1.0, "fast": 1.5}
 
 CAPABILITIES_DIR = os.path.join(
@@ -117,14 +112,6 @@ class StretchMainController(Node):
         self.bed = None
         self.kitchen = None
         self.general = None
-
-        # --- Load navigation goals ---
-        with open(GOALS_YAML) as f:
-            goals_cfg = yaml.safe_load(f)
-        self.frame_id = goals_cfg.get("frame_id", "map")
-        self.goals = goals_cfg.get("goals", {})
-        self.get_logger().info(f"[Init] Goals loaded: {list(self.goals.keys())}")
-
         # --- ROS2 interfaces ---
         self.goal_pub = self.create_publisher(PoseStamped, "/goal_pose", 10)
         self.tf_buffer = Buffer()
