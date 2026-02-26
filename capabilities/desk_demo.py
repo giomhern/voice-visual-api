@@ -49,7 +49,7 @@ class Config:
     traj_action_name: str = "/stretch_controller/follow_joint_trajectory"
 
     # Turn parameters
-    turn_left_rad: float = math.pi / 2.0
+    turn_left_rad: float = math.pi / 4.0
     yaw_tol_rad: float = math.radians(2.0)
     max_wz: float = 0.6
     kp_yaw: float = 1.8
@@ -245,6 +245,13 @@ class SurfaceCleanDesk(Node):
         self.get_logger().info("[PIPE] 4) pre-wipe pose")
         if not self._prewipe_pose():
             return 5
+        
+
+        self.get_logger().info("[PIPE 3.5] switch_to_navigation mode")
+        if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
+            return 7
+        time.sleep(0.25)
+
 
         self.get_logger().info("[PIPE] 5) trigger clean_surface")
         if not self._call_trigger(self.srv_clean, self.cfg.clean_surface_srv, wait_s=10.0, timeout_s=90.0):
