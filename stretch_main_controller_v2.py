@@ -56,7 +56,7 @@ SPEED_TO_SCALE = {"slow": 0.3, "medium": 1.0, "fast": 1.5}
 
 CAPABILITIES_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
-    "voice-visual-api", "capabilities",
+    "capabilities",
 )
 
 # Map ACTION tags to (room, demo_type) for dispatch
