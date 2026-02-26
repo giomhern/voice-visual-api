@@ -60,9 +60,9 @@ class PrecisePath(Node):
         # - drive forward 0.75 m
         # - rotate right 30 degrees (back to original heading)
         self.steps: List[Step] = [
-            Step("turn", math.radians(+30.0)),
-            Step("drive", 0.75),
-            Step("turn", math.radians(-30.0)),
+            Step("turn", math.radians(-20.0)),
+            Step("drive", 1.5),
+            Step("turn", math.radians(-15.0)),
         ]
 
         self.get_logger().info("Waiting for /odom...")
