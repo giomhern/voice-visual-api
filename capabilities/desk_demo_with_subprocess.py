@@ -67,7 +67,7 @@ class Config:
     traj_action_name: str = "/stretch_controller/follow_joint_trajectory"
 
     # Turn parameters
-    turn_left_rad: float = math.pi / 2.0
+    turn_left_rad: float = math.pi / 4.0
     yaw_tol_rad: float = math.radians(2.0)
     max_wz: float = 0.6
     kp_yaw: float = 1.8
