@@ -9,25 +9,27 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 
+from geometry_msgs.msg import Twist
+from std_srvs.srv import Trigger
+
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
 
-from geometry_msgs.msg import Twist
-from std_srvs.srv import Trigger
 
+@dataclass
+class Config:
+    cmd_vel_topic: str = "/stretch/cmd_vel"
 
-TRAJ_ACTION = "/stretch_controller/follow_joint_trajectory"
-CMD_VEL_TOPIC = "/stretch/cmd_vel"
+    # Mode switch services (these are the ones you already used successfully)
+    switch_to_nav_srv: str = "/switch_to_navigation_mode"
+    switch_to_pos_srv: str = "/switch_to_position_mode"
 
-SWITCH_TO_TRAJ_SRV = "/switch_to_trajectory_mode"
-SWITCH_TO_NAV_SRV = "/switch_to_navigation_mode"
+    # Trajectory action
+    traj_action_name: str = "/stretch_controller/follow_joint_trajectory"
 
-
-def duration_msg(t: float) -> Duration:
-    sec = int(t)
-    nanosec = int((t - sec) * 1e9)
-    return Duration(sec=sec, nanosec=nanosec)
+    traj_server_wait_s: float = 5.0
+    traj_timeout_s: float = 30.0
 
 
 @dataclass
@@ -40,15 +42,23 @@ class Pose:
     joint_gripper_finger_left: float = 0.05  # open-ish
 
 
+def dur(t: float) -> Duration:
+    sec = int(t)
+    nanosec = int((t - sec) * 1e9)
+    return Duration(sec=sec, nanosec=nanosec)
+
+
 class AirGraspDemo(Node):
-    def __init__(self):
-        super().__init__("air_grasp_demo_modes_two_waypoints")
+    def __init__(self, cfg: Config):
+        super().__init__("air_grasp_demo_position_mode")
+        self.cfg = cfg
 
-        self.traj_client = ActionClient(self, FollowJointTrajectory, TRAJ_ACTION)
-        self.cmd_pub = self.create_publisher(Twist, CMD_VEL_TOPIC, 10)
+        self.cmd_pub = self.create_publisher(Twist, cfg.cmd_vel_topic, 10)
 
-        self.srv_traj = self.create_client(Trigger, SWITCH_TO_TRAJ_SRV)
-        self.srv_nav = self.create_client(Trigger, SWITCH_TO_NAV_SRV)
+        self.srv_nav = self.create_client(Trigger, cfg.switch_to_nav_srv)
+        self.srv_pos = self.create_client(Trigger, cfg.switch_to_pos_srv)
+
+        self.traj_client = ActionClient(self, FollowJointTrajectory, cfg.traj_action_name)
 
         self.joint_names = [
             "wrist_extension",
@@ -56,97 +66,40 @@ class AirGraspDemo(Node):
             "joint_wrist_yaw",
             "joint_wrist_pitch",
             "joint_wrist_roll",
-            "joint_gripper_finger_left",
+            "joint_gripper_finger_left",  # ONLY ONE finger joint
         ]
 
-    # ---------- services ----------
-    def _call_trigger(self, client, name: str, wait_s: float = 8.0, timeout_s: float = 12.0):
-        t0 = time.time()
-        while not client.wait_for_service(timeout_sec=0.5):
-            if time.time() - t0 > wait_s:
-                raise RuntimeError(f"Timed out waiting for service: {name}")
-            self.get_logger().info(f"Waiting for {name}...")
+    # ---------- helpers ----------
+    def _stop_base(self, settle_s: float = 0.15):
+        z = Twist()
+        for _ in range(5):
+            self.cmd_pub.publish(z)
+            time.sleep(0.05)
+        time.sleep(settle_s)
+
+    def _call_trigger(self, client, name: str, wait_s: float = 5.0, timeout_s: float = 12.0) -> bool:
+        if not client.wait_for_service(timeout_sec=float(wait_s)):
+            self.get_logger().error(f"[SRV] {name} not available")
+            return False
 
         fut = client.call_async(Trigger.Request())
-        rclpy.spin_until_future_complete(self, fut, timeout_sec=timeout_s)
-        resp = fut.result()
-        if resp is None:
-            raise RuntimeError(f"Service call failed/timeout: {name}")
-        if not resp.success:
-            raise RuntimeError(f"{name} returned success=False: {resp.message}")
-        time.sleep(0.25)
+        rclpy.spin_until_future_complete(self, fut, timeout_sec=float(timeout_s))
 
-    def switch_to_trajectory_mode(self):
-        self.get_logger().info("[MODE] switching to trajectory")
-        self._call_trigger(self.srv_traj, SWITCH_TO_TRAJ_SRV)
+        if not fut.done():
+            self.get_logger().error(f"[SRV] {name} timed out after {timeout_s:.1f}s")
+            return False
 
-    def switch_to_navigation_mode(self):
-        self.get_logger().info("[MODE] switching to navigation")
-        self._call_trigger(self.srv_nav, SWITCH_TO_NAV_SRV)
+        try:
+            resp = fut.result()
+            ok = bool(resp.success)
+            self.get_logger().info(f"[SRV] {name}: success={ok} msg='{resp.message}'")
+            time.sleep(0.25)
+            return ok
+        except Exception as e:
+            self.get_logger().error(f"[SRV] {name} failed: {e}")
+            return False
 
-    # ---------- motion ----------
-    def wait_for_traj(self, timeout_s: float = 8.0):
-        if not self.traj_client.wait_for_server(timeout_sec=timeout_s):
-            raise RuntimeError(f"Trajectory action not available: {TRAJ_ACTION}")
-
-    def _send_traj_two_points(self, positions_start: List[float], positions_goal: List[float], move_time_s: float):
-        if len(positions_start) != len(self.joint_names) or len(positions_goal) != len(self.joint_names):
-            raise ValueError("positions length must match joint_names length")
-
-        goal = FollowJointTrajectory.Goal()
-        goal.trajectory.joint_names = list(self.joint_names)
-
-        # IMPORTANT: don't set a future stamp
-        goal.trajectory.header.stamp.sec = 0
-        goal.trajectory.header.stamp.nanosec = 0
-
-        p0 = JointTrajectoryPoint()
-        p0.positions = list(positions_start)
-        p0.time_from_start = duration_msg(0.0)
-
-        p1 = JointTrajectoryPoint()
-        p1.positions = list(positions_goal)
-        p1.time_from_start = duration_msg(move_time_s)
-
-        goal.trajectory.points = [p0, p1]
-
-        send_fut = self.traj_client.send_goal_async(goal)
-        rclpy.spin_until_future_complete(self, send_fut, timeout_sec=20.0)
-        gh = send_fut.result()
-        if gh is None or not gh.accepted:
-            raise RuntimeError("Trajectory goal rejected")
-
-        res_fut = gh.get_result_async()
-        rclpy.spin_until_future_complete(self, res_fut, timeout_sec=40.0)
-
-        result = res_fut.result().result
-        ok = int(result.error_code) == 0
-        err_str = getattr(result, "error_string", "")
-        if not ok:
-            raise RuntimeError(f"Trajectory failed: code={result.error_code} err='{err_str}'")
-        time.sleep(0.20)
-
-    def send_pose(self, current: Pose, target: Pose, move_time_s: float = 1.2) -> Pose:
-        start = [
-            current.wrist_extension,
-            current.joint_lift,
-            current.joint_wrist_yaw,
-            current.joint_wrist_pitch,
-            current.joint_wrist_roll,
-            current.joint_gripper_finger_left,
-        ]
-        goal = [
-            target.wrist_extension,
-            target.joint_lift,
-            target.joint_wrist_yaw,
-            target.joint_wrist_pitch,
-            target.joint_wrist_roll,
-            target.joint_gripper_finger_left,
-        ]
-        self._send_traj_two_points(start, goal, move_time_s)
-        return target
-
-    def drive_forward(self, v: float, duration_s: float):
+    def _drive_forward(self, v: float = 0.05, duration_s: float = 1.0):
         if duration_s <= 0:
             return
         msg = Twist()
@@ -155,15 +108,74 @@ class AirGraspDemo(Node):
         while time.time() - t0 < duration_s:
             self.cmd_pub.publish(msg)
             time.sleep(0.05)
-        self.cmd_pub.publish(Twist())
-        time.sleep(0.15)
+        self._stop_base()
+
+    def _send_pose(self, start: Pose, goal: Pose, duration_s: float) -> bool:
+        if not self.traj_client.wait_for_server(timeout_sec=float(self.cfg.traj_server_wait_s)):
+            self.get_logger().error(f"[TRAJ] Action not available: {self.cfg.traj_action_name}")
+            return False
+
+        g = FollowJointTrajectory.Goal()
+        g.trajectory.joint_names = list(self.joint_names)
+
+        # Important: do NOT set a future stamp
+        g.trajectory.header.stamp.sec = 0
+        g.trajectory.header.stamp.nanosec = 0
+
+        p0 = JointTrajectoryPoint()
+        p0.positions = [
+            start.wrist_extension,
+            start.joint_lift,
+            start.joint_wrist_yaw,
+            start.joint_wrist_pitch,
+            start.joint_wrist_roll,
+            start.joint_gripper_finger_left,
+        ]
+        p0.time_from_start = dur(0.0)
+
+        p1 = JointTrajectoryPoint()
+        p1.positions = [
+            goal.wrist_extension,
+            goal.joint_lift,
+            goal.joint_wrist_yaw,
+            goal.joint_wrist_pitch,
+            goal.joint_wrist_roll,
+            goal.joint_gripper_finger_left,
+        ]
+        p1.time_from_start = dur(duration_s)
+
+        g.trajectory.points = [p0, p1]
+
+        self.get_logger().info(f"[TRAJ] Sending -> yaw={goal.joint_wrist_yaw:.2f} fingerL={goal.joint_gripper_finger_left:.3f}")
+        send_fut = self.traj_client.send_goal_async(g)
+        rclpy.spin_until_future_complete(self, send_fut, timeout_sec=float(self.cfg.traj_timeout_s))
+
+        if not send_fut.done():
+            self.get_logger().error("[TRAJ] send_goal timed out")
+            return False
+
+        gh = send_fut.result()
+        if not gh or not gh.accepted:
+            self.get_logger().error("[TRAJ] goal rejected")
+            return False
+
+        res_fut = gh.get_result_async()
+        rclpy.spin_until_future_complete(self, res_fut, timeout_sec=float(self.cfg.traj_timeout_s))
+        if not res_fut.done():
+            self.get_logger().error("[TRAJ] result timed out")
+            return False
+
+        result = res_fut.result().result
+        ok = int(result.error_code) == 0
+        err_str = getattr(result, "error_string", "")
+        self.get_logger().info(f"[TRAJ] done ok={ok} error_code={result.error_code} err='{err_str}'")
+        time.sleep(0.2)
+        return ok
 
     # ---------- demo ----------
-    def run(self):
-        self.wait_for_traj()
-
-        # Tune
-        forward_each_step_s = 1.0   # set 0 to disable base motion
+    def run(self) -> int:
+        # Tune these
+        forward_each_step_s = 1.0
         forward_speed = 0.05
 
         grip_open = 0.05
@@ -173,69 +185,86 @@ class AirGraspDemo(Node):
         yaw_mid = 0.00
         yaw_left = -0.70
 
-        pose = Pose(
+        cur = Pose(
             wrist_extension=0.20,
             joint_lift=0.35,
-            joint_wrist_yaw=0.0,
             joint_wrist_pitch=-0.30,
             joint_wrist_roll=0.0,
+            joint_wrist_yaw=0.0,
             joint_gripper_finger_left=grip_open,
         )
 
-        # RIGHT (start): open -> close
-        self.switch_to_trajectory_mode()
-        self.get_logger().info("[DEMO] Go RIGHT open")
-        pose = self.send_pose(pose, Pose(**{**pose.__dict__, "joint_wrist_yaw": yaw_right, "joint_gripper_finger_left": grip_open}), 1.5)
+        # 1) Position mode for arm/gripper
+        if not self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0):
+            return 2
 
-        self.get_logger().info("[DEMO] RIGHT close")
-        pose = self.send_pose(pose, Pose(**{**pose.__dict__, "joint_wrist_yaw": yaw_right, "joint_gripper_finger_left": grip_closed}), 0.8)
+        # RIGHT open -> close
+        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_right, "joint_gripper_finger_left": grip_open})
+        if not self._send_pose(cur, goal, 1.3): return 3
+        cur = goal
 
-        # Drive to MIDDLE while holding closed
-        self.switch_to_navigation_mode()
-        self.get_logger().info("[DEMO] Drive forward (step 1)")
-        self.drive_forward(forward_speed, forward_each_step_s)
+        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_right, "joint_gripper_finger_left": grip_closed})
+        if not self._send_pose(cur, goal, 0.8): return 3
+        cur = goal
 
-        # MIDDLE: (still closed) -> open -> close
-        self.switch_to_trajectory_mode()
-        self.get_logger().info("[DEMO] Move to MIDDLE while closed")
-        pose = self.send_pose(pose, Pose(**{**pose.__dict__, "joint_wrist_yaw": yaw_mid, "joint_gripper_finger_left": grip_closed}), 1.2)
+        # Nav mode for base
+        if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
+            return 4
+        self._drive_forward(forward_speed, forward_each_step_s)
 
-        self.get_logger().info("[DEMO] MIDDLE release (open)")
-        pose = self.send_pose(pose, Pose(**{**pose.__dict__, "joint_wrist_yaw": yaw_mid, "joint_gripper_finger_left": grip_open}), 0.6)
+        # Back to position mode
+        if not self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0):
+            return 5
 
-        self.get_logger().info("[DEMO] MIDDLE close")
-        pose = self.send_pose(pose, Pose(**{**pose.__dict__, "joint_wrist_yaw": yaw_mid, "joint_gripper_finger_left": grip_closed}), 0.8)
+        # MIDDLE (closed) -> open -> close
+        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_mid, "joint_gripper_finger_left": grip_closed})
+        if not self._send_pose(cur, goal, 1.0): return 6
+        cur = goal
 
-        # Drive to LEFT while holding closed
-        self.switch_to_navigation_mode()
-        self.get_logger().info("[DEMO] Drive forward (step 2)")
-        self.drive_forward(forward_speed, forward_each_step_s)
+        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_mid, "joint_gripper_finger_left": grip_open})
+        if not self._send_pose(cur, goal, 0.6): return 6
+        cur = goal
 
-        # LEFT: (still closed) -> open
-        self.switch_to_trajectory_mode()
-        self.get_logger().info("[DEMO] Move to LEFT while closed")
-        pose = self.send_pose(pose, Pose(**{**pose.__dict__, "joint_wrist_yaw": yaw_left, "joint_gripper_finger_left": grip_closed}), 1.2)
+        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_mid, "joint_gripper_finger_left": grip_closed})
+        if not self._send_pose(cur, goal, 0.8): return 6
+        cur = goal
 
-        self.get_logger().info("[DEMO] LEFT release (open)")
-        pose = self.send_pose(pose, Pose(**{**pose.__dict__, "joint_wrist_yaw": yaw_left, "joint_gripper_finger_left": grip_open}), 0.6)
+        # Nav mode for base
+        if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
+            return 7
+        self._drive_forward(forward_speed, forward_each_step_s)
 
-        # Return neutral
-        self.get_logger().info("[DEMO] Return neutral (open)")
-        pose = self.send_pose(pose, Pose(**{**pose.__dict__, "joint_wrist_yaw": 0.0, "joint_gripper_finger_left": grip_open}), 1.2)
+        # Back to position mode
+        if not self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0):
+            return 8
 
-        self.get_logger().info("[DEMO] Done")
+        # LEFT (closed) -> open
+        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_left, "joint_gripper_finger_left": grip_closed})
+        if not self._send_pose(cur, goal, 1.0): return 9
+        cur = goal
+
+        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_left, "joint_gripper_finger_left": grip_open})
+        if not self._send_pose(cur, goal, 0.6): return 9
+        cur = goal
+
+        # Neutral
+        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": 0.0, "joint_gripper_finger_left": grip_open})
+        if not self._send_pose(cur, goal, 1.0): return 10
+
+        self.get_logger().info("[DEMO] done")
+        return 0
 
 
 def main():
     rclpy.init()
-    node = AirGraspDemo()
+    node = AirGraspDemo(Config())
     try:
-        node.run()
-    except KeyboardInterrupt:
-        pass
+        rc = node.run()
     finally:
+        node._stop_base()
         node.destroy_node()
         rclpy.shutdown()
+    raise SystemExit(rc)
 
 
 if __name__ == "__main__":
