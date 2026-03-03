@@ -99,7 +99,7 @@ class AirGraspDrop(Node):
         return self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0)
 
     def _stop_base_nav(self, settle_s: float = 0.15):
-        """Stop base safely: make sure we're in nav mode before publishing Twist(0)."""
+        """Stop base safely: ensure nav mode before publishing Twist(0)."""
         if not self._ensure_nav_mode():
             self.get_logger().warn("[STOP] Could not switch to nav mode; skipping cmd_vel stop")
             return
@@ -128,7 +128,6 @@ class AirGraspDrop(Node):
             self.cmd_pub.publish(msg)
             time.sleep(0.05)
 
-        # stop while still in nav mode
         self._stop_base_nav()
 
     def _send_pose(self, start: Pose, goal: Pose, duration_s: float) -> bool:
@@ -139,7 +138,7 @@ class AirGraspDrop(Node):
         g = FollowJointTrajectory.Goal()
         g.trajectory.joint_names = list(self.joint_names)
 
-        # Don't set a future stamp
+        # Don’t set a future stamp
         g.trajectory.header.stamp.sec = 0
         g.trajectory.header.stamp.nanosec = 0
 
@@ -167,10 +166,6 @@ class AirGraspDrop(Node):
 
         g.trajectory.points = [p0, p1]
 
-        self.get_logger().info(
-            f"[TRAJ] fingerL={goal.joint_gripper_finger_left:.3f} lift={goal.joint_lift:.3f} ext={goal.wrist_extension:.3f}"
-        )
-
         send_fut = self.traj_client.send_goal_async(g)
         rclpy.spin_until_future_complete(self, send_fut, timeout_sec=float(self.cfg.traj_timeout_s))
         if not send_fut.done():
@@ -195,9 +190,49 @@ class AirGraspDrop(Node):
         time.sleep(0.15)
         return ok
 
+    # ---------- “make it apparent” sequence ----------
+    def _apparent_grasp(self, cur: Pose, open_wide: float, closed: float) -> Pose | None:
+        # Big open (obvious)
+        self.get_logger().info("[SHOW] Open wide (ready to grasp)")
+        wide = Pose(**{**cur.__dict__, "joint_gripper_finger_left": open_wide})
+        if not self._send_pose(cur, wide, 0.7):
+            return None
+        time.sleep(0.25)
+
+        # Slow close (obvious pinch)
+        self.get_logger().info("[SHOW] Close slowly (GRASP)")
+        pinch = Pose(**{**wide.__dict__, "joint_gripper_finger_left": closed})
+        if not self._send_pose(wide, pinch, 1.2):
+            return None
+
+        # Hold closed briefly so it reads as “holding”
+        self.get_logger().info("[SHOW] Hold (carrying)")
+        time.sleep(0.6)
+        return pinch
+
+    def _apparent_release(self, cur: Pose, open_wide: float, closed: float) -> Pose | None:
+        # Open wide (obvious release)
+        self.get_logger().info("[SHOW] Open wide (RELEASE)")
+        released = Pose(**{**cur.__dict__, "joint_gripper_finger_left": open_wide})
+        if not self._send_pose(cur, released, 0.9):
+            return None
+
+        # Little pulse to make it super apparent (open->close->open)
+        self.get_logger().info("[SHOW] Release wiggle (open-close-open)")
+        time.sleep(0.2)
+        half_close = Pose(**{**released.__dict__, "joint_gripper_finger_left": max(closed, open_wide - 0.02)})
+        if not self._send_pose(released, half_close, 0.35):
+            return None
+        if not self._send_pose(half_close, released, 0.35):
+            return None
+
+        time.sleep(0.2)
+        return released
+
     # ---------- main behavior ----------
     def run(self, drop: str, step_m: float, speed_mps: float) -> int:
-        grip_open = 0.05
+        # More “apparent” values
+        grip_open_wide = 0.08   # visibly open
         grip_closed = 0.01
 
         steps_needed = {"right": 0, "middle": 1, "left": 2}[drop]
@@ -213,47 +248,44 @@ class AirGraspDrop(Node):
             joint_wrist_yaw=0.0,
             joint_wrist_pitch=-0.30,
             joint_wrist_roll=0.0,
-            joint_gripper_finger_left=grip_open,
+            joint_gripper_finger_left=0.05,
         )
 
-        # 1) Position mode: open then pinch
+        # 1) Position mode: “apparent grasp”
         if not self._ensure_pos_mode():
             return 2
 
-        self.get_logger().info("[STEP] Ensure open")
-        open_pose = Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_open})
-        if not self._send_pose(cur, open_pose, 0.6):
+        new_cur = self._apparent_grasp(cur, open_wide=grip_open_wide, closed=grip_closed)
+        if new_cur is None:
             return 3
-        cur = open_pose
+        cur = new_cur
 
-        self.get_logger().info("[STEP] Close (pinch)")
-        pinch = Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_closed})
-        if not self._send_pose(cur, pinch, 0.8):
-            return 3
-        cur = pinch
-
-        # 2) Nav mode: drive (cmd_vel only works here)
+        # 2) Nav mode: drive while “carrying” (closed)
         if dist_total > 0.0:
-            self.get_logger().info(f"[STEP] Drive forward {dist_total:.3f} m (time-based)")
+            self.get_logger().info(f"[STEP] Carry forward {dist_total:.3f} m")
             self._drive_forward_distance_nav(dist_total, speed_mps)
+        else:
+            # still stop in nav mode to keep behavior consistent
+            self._stop_base_nav()
 
-        # 3) Position mode: release
+        # 3) Position mode: “apparent release”
         if not self._ensure_pos_mode():
             return 5
 
-        self.get_logger().info(f"[STEP] Release at {drop.upper()} (open)")
-        released = Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_open})
-        if not self._send_pose(cur, released, 0.7):
+        self.get_logger().info(f"[STEP] Release at {drop.upper()}")
+        new_cur = self._apparent_release(cur, open_wide=grip_open_wide, closed=grip_closed)
+        if new_cur is None:
             return 6
+        cur = new_cur
 
         self.get_logger().info("[DONE] Air-grasp drop complete")
         return 0
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Air-grasp then drop at right/middle/left (cmd_vel only in nav mode)")
+    parser = argparse.ArgumentParser(description="Air-grasp then drop at right/middle/left (apparent grasp/release)")
     parser.add_argument("--drop", choices=["right", "middle", "left"], default="middle",
-                        help="Where to release the pinch (default: middle)")
+                        help="Where to release (default: middle)")
     parser.add_argument("--step-m", type=float, default=0.45,
                         help="Forward distance (m) between right->middle and middle->left (default: 0.45)")
     parser.add_argument("--speed", type=float, default=0.05,
@@ -265,7 +297,6 @@ def main():
     try:
         rc = node.run(drop=args.drop, step_m=args.step_m, speed_mps=args.speed)
     finally:
-        # Stop safely (requires nav mode)
         node._stop_base_nav()
         node.destroy_node()
         rclpy.shutdown()
