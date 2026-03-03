@@ -41,3 +41,116 @@ ros2 action send_goal <ACTION_NAME> control_msgs/action/FollowJointTrajectory "{
 [stretch_driver-3] -------------------------------------------
 [stretch_driver-3] Finished goal
 [stretch_driver-3] [INFO] [1771965635.872805182] [stretch_driver]: stretch_driver joint_traj action: Achieved all target points.
+
+
+ros2 launch stretch_demos grasp_object.launch.py 
+[INFO] [launch]: All log files can be found below /home/hello-robot/.ros/log/2026-03-03-15-04-58-622921-stretch-se3-3103-11253
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [launch.user]: D435i launched in high resolution
+[INFO] [realsense2_camera_node-1]: process started with pid [11270]
+[INFO] [stretch_driver-5]: process started with pid [11278]
+[INFO] [d435i_accel_correction-2]: process started with pid [11272]
+[INFO] [joint_state_publisher-3]: process started with pid [11274]
+[INFO] [robot_state_publisher-4]: process started with pid [11276]
+[INFO] [funmap-6]: process started with pid [11280]
+[INFO] [grasp_object-7]: process started with pid [11282]
+[INFO] [static_transform_publisher-8]: process started with pid [11284]
+[static_transform_publisher-8] [INFO] [1772571898.947449876] [static_transform_publisher_9rhdtv3GbzVZfiPi]: Spinning until stopped - publishing transform
+[static_transform_publisher-8] translation: ('0.000000', '0.000000', '0.000000')
+[static_transform_publisher-8] rotation: ('0.500000', '0.500000', '-0.500000', '0.500000')
+[static_transform_publisher-8] from 'link_straight_gripper' to 'link_straight_gripper_aligned'
+[d435i_accel_correction-2] [INFO] [1772571899.398097864] [d435i_accel_correction_node]: d435i_accel_correction_node started
+[realsense2_camera_node-1] [INFO] [1772571899.580878205] [camera]: RealSense ROS v4.55.1
+[realsense2_camera_node-1] [INFO] [1772571899.580999994] [camera]: Built with LibRealSense v2.56.5
+[realsense2_camera_node-1] [INFO] [1772571899.581010682] [camera]: Running with LibRealSense v2.56.5
+[realsense2_camera_node-1] [INFO] [1772571899.621905985] [camera]: Device with serial number 246422071246 was found.
+[realsense2_camera_node-1] 
+[realsense2_camera_node-1] [INFO] [1772571899.622317056] [camera]: Device with physical ID /sys/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:1.0/video4linux/video0 was found.
+[realsense2_camera_node-1] [INFO] [1772571899.622334138] [camera]: Device with name Intel RealSense D435IF was found.
+[realsense2_camera_node-1] [INFO] [1772571899.622527765] [camera]: Device with port number 2-1 was found.
+[realsense2_camera_node-1] [INFO] [1772571899.622547351] [camera]: Device USB type: 3.2
+[realsense2_camera_node-1] [INFO] [1772571899.622559978] [camera]: Resetting device...
+[grasp_object-7] [INFO] [1772571900.069811396] [stretch_funmap]: MoveBase __init__: self.debug_directory = None
+[grasp_object-7] MaxHeightImage information:
+[grasp_object-7]      image.shape = (67, 25)
+[grasp_object-7]      image.dtype = uint8
+[grasp_object-7]      m_per_pix = 0.006
+[grasp_object-7]      m_per_height_unit = 0.00027667984189723324
+[grasp_object-7]      voi.x_in_m = 0.15
+[grasp_object-7]      voi.y_in_m = 0.4
+[grasp_object-7]      voi.z_in_m = 0.07
+[grasp_object-7] MaxHeightImage information:
+[grasp_object-7]      image.shape = (434, 350)
+[grasp_object-7]      image.dtype = uint8
+[grasp_object-7]      m_per_pix = 0.006
+[grasp_object-7]      m_per_height_unit = 0.004566929133858267
+[grasp_object-7]      voi.x_in_m = 2.1
+[grasp_object-7]      voi.y_in_m = 2.6
+[grasp_object-7]      voi.z_in_m = 1.16
+[grasp_object-7] Traceback (most recent call last):
+[grasp_object-7]   File "/home/hello-robot/ament_ws/install/stretch_demos/lib/stretch_demos/grasp_object", line 33, in <module>
+[grasp_object-7]     sys.exit(load_entry_point('stretch-demos', 'console_scripts', 'grasp_object')())
+[grasp_object-7]   File "/home/hello-robot/ament_ws/build/stretch_demos/stretch_demos/grasp_object.py", line 233, in main
+[grasp_object-7]     node = GraspObjectNode()
+[grasp_object-7]   File "/home/hello-robot/ament_ws/build/stretch_demos/stretch_demos/grasp_object.py", line 28, in __init__
+[grasp_object-7]     self.move_base = nv.MoveBase(self)
+[grasp_object-7]   File "/home/hello-robot/ament_ws/build/stretch_funmap/stretch_funmap/navigate.py", line 216, in __init__
+[grasp_object-7]     self.node.create_subscription(
+[grasp_object-7]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1353, in create_subscription
+[grasp_object-7]     callback_group = callback_group or self.default_callback_group
+[grasp_object-7]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 304, in default_callback_group
+[grasp_object-7]     return self._default_callback_group
+[grasp_object-7] AttributeError: 'GraspObjectNode' object has no attribute '_default_callback_group'. Did you mean: 'default_callback_group'?
+[funmap-6] /home/hello-robot/ament_ws/src/stretch_ros2/stretch_funmap/.venv/lib/python3.10/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
+[funmap-6]   warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
+[ERROR] [grasp_object-7]: process has died [pid 11282, exit code 1, cmd '/home/hello-robot/ament_ws/install/stretch_demos/lib/stretch_demos/grasp_object --ros-args --params-file /tmp/launch_params_e8bsbatx'].
+[stretch_driver-5] [INFO] [1772571900.652983715] [stretch_driver]: For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.
+[stretch_driver-5] [INFO] [1772571900.653340371] [stretch_driver]: stretch_driver started
+[funmap-6] [INFO] [1772571900.657684962] [funmap]: funmap started
+[stretch_driver-5] Key mapped to End-Of-Arm Tool: eoa_wrist_dw3_tool_sg3
+[stretch_driver-5] [INFO] [1772571902.384910006] [stretch_driver]: broadcast_odom_tf = True
+[stretch_driver-5] [INFO] [1772571902.415209413] [stretch_driver]: rate = 30.0 Hz
+[stretch_driver-5] [INFO] [1772571902.417147347] [stretch_driver]: twist timeout = 0.5 s
+[stretch_driver-5] [INFO] [1772571902.418757198] [stretch_driver]: base_frame_id = base_link
+[stretch_driver-5] [INFO] [1772571902.419499042] [stretch_driver]: odom_frame_id = odom
+[stretch_driver-5] [INFO] [1772571902.457414037] [stretch_driver]: Changed to mode = position
+[funmap-6] [INFO] [1772571902.697050011] [funmap]: Node funmap connected to /home_the_robot service.
+[funmap-6] [INFO] [1772571902.698011358] [funmap]: Node funmap connected to /stow_the_robot service.
+[funmap-6] [INFO] [1772571902.698847530] [funmap]: Node funmap connected to /stop_the_robot service.
+[funmap-6] [INFO] [1772571902.702413925] [funmap]: Node funmap connected to /switch_to_trajectory_mode service.
+[funmap-6] [INFO] [1772571902.703300187] [funmap]: Node funmap connected to /switch_to_position_mode service.
+[funmap-6] [INFO] [1772571902.704056300] [funmap]: Node funmap connected to /switch_to_navigation_mode service.
+[funmap-6] [INFO] [1772571902.704316572] [funmap]: Node funmap waiting to receive first point cloud.
+[realsense2_camera_node-1] [INFO] [1772571905.679408742] [camera]: Device with serial number 246422071246 was found.
+[realsense2_camera_node-1] 
+[realsense2_camera_node-1] [INFO] [1772571905.679571064] [camera]: Device with physical ID /sys/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:1.0/video4linux/video0 was found.
+[realsense2_camera_node-1] [INFO] [1772571905.679593543] [camera]: Device with name Intel RealSense D435IF was found.
+[realsense2_camera_node-1] [INFO] [1772571905.679898022] [camera]: Device with port number 2-1 was found.
+[realsense2_camera_node-1] [INFO] [1772571905.679926625] [camera]: Device USB type: 3.2
+[realsense2_camera_node-1] [INFO] [1772571905.680059338] [camera]: getParameters...
+[realsense2_camera_node-1] [INFO] [1772571906.022030977] [camera]: JSON file is loaded! (/home/hello-robot/ament_ws/install/stretch_core/share/stretch_core/config/HighAccuracyPreset.json)
+[realsense2_camera_node-1] [INFO] [1772571906.022162224] [camera]: Device Name: Intel RealSense D435IF
+[realsense2_camera_node-1] [INFO] [1772571906.022269857] [camera]: Device Serial No: 246422071246
+[realsense2_camera_node-1] [INFO] [1772571906.022340405] [camera]: Device physical port: /sys/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:1.0/video4linux/video0
+[realsense2_camera_node-1] [INFO] [1772571906.022363639] [camera]: Device FW version: 5.17.0.10
+[realsense2_camera_node-1] [INFO] [1772571906.022383149] [camera]: Device Product ID: 0x0B3A
+[realsense2_camera_node-1] [INFO] [1772571906.022402082] [camera]: Sync Mode: On
+[realsense2_camera_node-1] [WARN] [1772571906.150356869] [camera]: re-enable the stream for the change to take effect.
+[realsense2_camera_node-1] [WARN] [1772571906.151067372] [camera]: re-enable the stream for the change to take effect.
+[realsense2_camera_node-1] [WARN] [1772571906.158618905] [camera]: re-enable the stream for the change to take effect.
+[realsense2_camera_node-1] [ERROR] [1772571906.159241490] [camera]: Given value, 63 is invalid. Set ROS param back to: 100
+[realsense2_camera_node-1] [INFO] [1772571906.163987180] [camera]: Stopping Sensor: Depth Module
+[realsense2_camera_node-1] [INFO] [1772571906.164053057] [camera]: Stopping Sensor: RGB Camera
+[realsense2_camera_node-1] [INFO] [1772571906.164070840] [camera]: Stopping Sensor: Motion Module
+[realsense2_camera_node-1] [INFO] [1772571906.184550166] [camera]: Starting Sensor: Depth Module
+[realsense2_camera_node-1] [INFO] [1772571906.186917826] [camera]: Open profile: stream_type: Depth(0), Format: Z16, Width: 1280, Height: 720, FPS: 15
+[realsense2_camera_node-1] [INFO] [1772571906.189499249] [camera]: Starting Sensor: RGB Camera
+[realsense2_camera_node-1] [INFO] [1772571906.191717067] [camera]: Open profile: stream_type: Color(0), Format: RGB8, Width: 1280, Height: 720, FPS: 15
+[realsense2_camera_node-1] [INFO] [1772571906.209544900] [camera]: Starting Sensor: Motion Module
+[realsense2_camera_node-1] [INFO] [1772571906.210556438] [camera]: Open profile: stream_type: Accel(0)Format: MOTION_XYZ32F, FPS: 100
+[realsense2_camera_node-1] [INFO] [1772571906.210576707] [camera]: Open profile: stream_type: Gyro(0)Format: MOTION_XYZ32F, FPS: 200
+[realsense2_camera_node-1] [INFO] [1772571906.211965281] [camera]: RealSense Node Is Up!
+[funmap-6] [INFO] [1772571907.010190558] [funmap]: Node funmap received first point cloud, so continuing.
+[funmap-6] [INFO] [1772571907.032854279] [stretch_funmap]: MoveBase __init__: self.debug_directory = /home/hello-robot/stretch_user/debug/
+[realsense2_camera_node-1] [WARN] [1772571907.184945786] [camera]: XXX Hardware Notification:Motion Module failure,1.77257e+12,Error,Hardware Error
+[realsense2_camera_node-1] [WARN] [1772571907.185016080] [camera]: Hardware Notification:Motion Module failure,1.77257e+12,Error,Hardware Error
