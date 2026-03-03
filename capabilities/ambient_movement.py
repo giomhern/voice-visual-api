@@ -7,6 +7,8 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 
+# cool comment for git diff
+
 
 class AmbientMovement(Node):
     """
