@@ -3,105 +3,122 @@ from __future__ import annotations
 
 import math
 import time
+import random
 
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 
 
-def clamp(x: float, lo: float, hi: float) -> float:
+def clamp(x, lo, hi):
     return max(lo, min(hi, x))
 
 
-class AmbientLivelyBase(Node):
+class OrganicAmbientMotion(Node):
     """
-    Smooth ambient motion for Stretch base using sinusoids:
-      - gentle yaw sway (left-right)
-      - gentle forward-back "breathing"
-    Publishes Twist to /stretch/cmd_vel.
+    Smooth + organic ambient motion.
 
-    Safety:
-      - very small amplitudes by default
-      - acceleration limiting to avoid jerks
+    Adds:
+      - sinusoidal sway
+      - slow random amplitude modulation
+      - random bias drift
+      - tiny spontaneous micro-turns
     """
 
-    def __init__(
-        self,
-        cmd_vel_topic: str = "/stretch/cmd_vel",
+    def __init__(self):
+        super().__init__("organic_ambient_motion")
 
-        # --- Yaw sway ---
-        yaw_amp_deg: float = 6.0,     # +/- degrees of sway (small)
-        yaw_period_s: float = 6.0,    # smaller = more lively, larger = calmer
+        self.pub = self.create_publisher(Twist, "/stretch/cmd_vel", 10)
 
-        # --- Forward/back ---
-        fb_amp_m: float = 0.03,       # +/- meters of "breathing" (3 cm)
-        fb_period_s: float = 5.0,
-        fb_phase_deg: float = 90.0,   # phase offset vs yaw; 90° feels natural
+        # === BASE PARAMETERS (safe defaults) ===
+        self.yaw_amp_deg = 5.0
+        self.yaw_period = 6.0
 
-        # --- Update + smoothing ---
-        update_hz: float = 30.0,
-        max_lin_acc: float = 0.15,    # m/s^2
-        max_ang_acc: float = 0.35,    # rad/s^2
+        self.fb_amp_m = 0.02
+        self.fb_period = 5.0
 
-        # --- Hard safety caps ---
-        lin_speed_cap: float = 0.06,  # m/s
-        ang_speed_cap: float = 0.25,  # rad/s
-    ):
-        super().__init__("ambient_lively_base")
+        self.update_hz = 30.0
+        self.dt = 1.0 / self.update_hz
 
-        self.pub = self.create_publisher(Twist, cmd_vel_topic, 10)
+        self.lin_cap = 0.06
+        self.ang_cap = 0.25
 
-        self.dt = 1.0 / float(update_hz)
+        self.max_lin_acc = 0.15
+        self.max_ang_acc = 0.35
 
-        # Convert “amplitude in position” to “amplitude in velocity”
-        # If theta(t) = A * sin(ωt), then theta_dot(t) = A*ω * cos(ωt)
-        self.yaw_A = math.radians(yaw_amp_deg)
-        self.yaw_w = 2.0 * math.pi / float(yaw_period_s)
-
-        self.fb_A = float(fb_amp_m)
-        self.fb_w = 2.0 * math.pi / float(fb_period_s)
-        self.fb_phase = math.radians(fb_phase_deg)
-
-        self.max_lin_acc = float(max_lin_acc)
-        self.max_ang_acc = float(max_ang_acc)
-
-        self.lin_cap = float(lin_speed_cap)
-        self.ang_cap = float(ang_speed_cap)
-
+        # === Internal state ===
+        self.t0 = time.monotonic()
         self.v_prev = 0.0
         self.w_prev = 0.0
 
-        self.t0 = time.monotonic()
+        # Organic modifiers
+        self.bias = 0.0
+        self.bias_target = 0.0
+        self.micro_burst_timer = 0.0
+        self.micro_burst_strength = 0.0
 
         self.timer = self.create_timer(self.dt, self._tick)
-        self.get_logger().info(
-            f"Ambient motion: topic={cmd_vel_topic} | "
-            f"yaw_amp={yaw_amp_deg}deg period={yaw_period_s}s | "
-            f"fb_amp={fb_amp_m}m period={fb_period_s}s | hz={update_hz}"
-        )
 
-    def _rate_limit(self, v_cmd: float, w_cmd: float) -> tuple[float, float]:
-        # limit acceleration per timestep
+        self.get_logger().info("Organic ambient motion started.")
+
+    def _rate_limit(self, v_cmd, w_cmd):
         dv_max = self.max_lin_acc * self.dt
         dw_max = self.max_ang_acc * self.dt
 
         v = self.v_prev + clamp(v_cmd - self.v_prev, -dv_max, dv_max)
         w = self.w_prev + clamp(w_cmd - self.w_prev, -dw_max, dw_max)
 
-        # hard caps
         v = clamp(v, -self.lin_cap, self.lin_cap)
         w = clamp(w, -self.ang_cap, self.ang_cap)
 
         self.v_prev, self.w_prev = v, w
         return v, w
 
+    def _update_bias(self):
+        # Occasionally choose new drift target
+        if random.random() < 0.005:
+            self.bias_target = random.uniform(-0.05, 0.05)
+
+        # Smoothly move toward target
+        self.bias += (self.bias_target - self.bias) * 0.01
+
+    def _maybe_trigger_micro_burst(self):
+        if self.micro_burst_timer <= 0 and random.random() < 0.003:
+            self.micro_burst_timer = random.uniform(0.3, 0.8)
+            self.micro_burst_strength = random.uniform(-0.15, 0.15)
+
+    def _update_micro_burst(self):
+        if self.micro_burst_timer > 0:
+            self.micro_burst_timer -= self.dt
+            return self.micro_burst_strength
+        return 0.0
+
     def _tick(self):
         t = time.monotonic() - self.t0
 
-        # Smooth commands (velocity space)
-        w_cmd = self.yaw_A * self.yaw_w * math.cos(self.yaw_w * t)
-        v_cmd = self.fb_A * self.fb_w * math.cos(self.fb_w * t + self.fb_phase)
+        # Slight random modulation of period
+        yaw_period_mod = self.yaw_period + random.uniform(-0.3, 0.3)
+        fb_period_mod = self.fb_period + random.uniform(-0.3, 0.3)
 
+        yaw_A = math.radians(self.yaw_amp_deg)
+        yaw_w = 2 * math.pi / yaw_period_mod
+
+        fb_A = self.fb_amp_m
+        fb_w = 2 * math.pi / fb_period_mod
+
+        # Base smooth motion
+        w_cmd = yaw_A * yaw_w * math.cos(yaw_w * t)
+        v_cmd = fb_A * fb_w * math.cos(fb_w * t + math.pi / 2)
+
+        # Add organic drift
+        self._update_bias()
+        w_cmd += self.bias
+
+        # Add spontaneous micro-expression
+        self._maybe_trigger_micro_burst()
+        w_cmd += self._update_micro_burst()
+
+        # Rate limit + cap
         v, w = self._rate_limit(v_cmd, w_cmd)
 
         msg = Twist()
@@ -111,12 +128,12 @@ class AmbientLivelyBase(Node):
 
     def stop(self):
         self.pub.publish(Twist())
-        self.get_logger().info("Ambient motion stopped.")
+        self.get_logger().info("Organic ambient motion stopped.")
 
 
 def main():
     rclpy.init()
-    node = AmbientLivelyBase()
+    node = OrganicAmbientMotion()
 
     try:
         rclpy.spin(node)
