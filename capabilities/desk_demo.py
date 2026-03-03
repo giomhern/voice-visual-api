@@ -227,7 +227,9 @@ class SurfaceCleanDesk(Node):
         return ok
 
     # ---------- main pipeline ----------
-    def run(self) -> int:
+    def run(self, wipes: int = 1) -> int:
+        self.get_logger().info(f"[PIPE] Starting desk demo ({wipes} wipe(s))")
+
         self.get_logger().info("[PIPE] 1) switch_to_navigation_mode")
         if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
             return 2
@@ -245,27 +247,36 @@ class SurfaceCleanDesk(Node):
         self.get_logger().info("[PIPE] 4) pre-wipe pose")
         if not self._prewipe_pose():
             return 5
-        
 
-        self.get_logger().info("[PIPE 3.5] switch_to_navigation mode")
+        self.get_logger().info("[PIPE] 5) switch_to_navigation_mode")
         if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
             return 7
         time.sleep(0.25)
 
+        for i in range(wipes):
+            self.get_logger().info(f"[PIPE] 6) trigger clean_surface (wipe {i + 1}/{wipes})")
+            if not self._call_trigger(self.srv_clean, self.cfg.clean_surface_srv, wait_s=10.0, timeout_s=90.0):
+                return 6
+            if i < wipes - 1:
+                time.sleep(0.5)  # brief pause between wipes
 
-        self.get_logger().info("[PIPE] 5) trigger clean_surface")
-        if not self._call_trigger(self.srv_clean, self.cfg.clean_surface_srv, wait_s=10.0, timeout_s=90.0):
-            return 6
-
-        self.get_logger().info("[PIPE] DONE ✅")
+        self.get_logger().info(f"[PIPE] DONE ({wipes} wipe(s) complete)")
         return 0
 
 
 def main():
-    rclpy.init()
+    import argparse
+    parser = argparse.ArgumentParser(description="Desk surface cleaning demo")
+    parser.add_argument(
+        "--wipes", type=int, choices=[1, 2, 3], default=1,
+        help="Number of wipe passes (1=once, 2=twice, 3=thoroughly)",
+    )
+    args, ros_args = parser.parse_known_args()
+
+    rclpy.init(args=ros_args)
     node = SurfaceCleanDesk(Config())
     try:
-        rc = node.run()
+        rc = node.run(wipes=args.wipes)
     finally:
         node._stop_base()
         node.destroy_node()
