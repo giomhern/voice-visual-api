@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import time
 from dataclasses import dataclass
-from typing import List
 
 import rclpy
 from rclpy.node import Node
@@ -37,7 +36,7 @@ class Config:
 class Pose:
     wrist_extension: float = 0.20
     joint_lift: float = 0.35
-    joint_wrist_yaw: float = 0.70     # start at RIGHT by default
+    joint_wrist_yaw: float = 0.0
     joint_wrist_pitch: float = -0.30
     joint_wrist_roll: float = 0.0
     joint_gripper_finger_left: float = 0.05  # open-ish
@@ -71,13 +70,6 @@ class AirGraspDrop(Node):
         ]
 
     # ---------- helpers ----------
-    def _stop_base(self, settle_s: float = 0.15):
-        z = Twist()
-        for _ in range(5):
-            self.cmd_pub.publish(z)
-            time.sleep(0.05)
-        time.sleep(settle_s)
-
     def _call_trigger(self, client, name: str, wait_s: float = 5.0, timeout_s: float = 12.0) -> bool:
         if not client.wait_for_service(timeout_sec=float(wait_s)):
             self.get_logger().error(f"[SRV] {name} not available")
@@ -94,19 +86,38 @@ class AirGraspDrop(Node):
             resp = fut.result()
             ok = bool(resp.success)
             self.get_logger().info(f"[SRV] {name}: success={ok} msg='{resp.message}'")
-            time.sleep(0.25)
+            time.sleep(0.15)
             return ok
         except Exception as e:
             self.get_logger().error(f"[SRV] {name} failed: {e}")
             return False
 
-    def _drive_forward_distance(self, meters: float, speed_mps: float):
-        """
-        Simple time-based drive. If you want odom-precise distance like your PrecisePath node,
-        we can swap this to odom-based control.
-        """
+    def _ensure_nav_mode(self) -> bool:
+        return self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0)
+
+    def _ensure_pos_mode(self) -> bool:
+        return self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0)
+
+    def _stop_base_nav(self, settle_s: float = 0.15):
+        """Stop base safely: make sure we're in nav mode before publishing Twist(0)."""
+        if not self._ensure_nav_mode():
+            self.get_logger().warn("[STOP] Could not switch to nav mode; skipping cmd_vel stop")
+            return
+
+        z = Twist()
+        for _ in range(6):
+            self.cmd_pub.publish(z)
+            time.sleep(0.05)
+        time.sleep(settle_s)
+
+    def _drive_forward_distance_nav(self, meters: float, speed_mps: float):
+        """Drive using cmd_vel (requires nav mode)."""
         if meters <= 0:
             return
+
+        if not self._ensure_nav_mode():
+            raise RuntimeError("Failed to switch to navigation mode before driving")
+
         speed_mps = max(0.01, float(speed_mps))
         duration_s = meters / speed_mps
 
@@ -117,7 +128,8 @@ class AirGraspDrop(Node):
             self.cmd_pub.publish(msg)
             time.sleep(0.05)
 
-        self._stop_base()
+        # stop while still in nav mode
+        self._stop_base_nav()
 
     def _send_pose(self, start: Pose, goal: Pose, duration_s: float) -> bool:
         if not self.traj_client.wait_for_server(timeout_sec=float(self.cfg.traj_server_wait_s)):
@@ -127,7 +139,7 @@ class AirGraspDrop(Node):
         g = FollowJointTrajectory.Goal()
         g.trajectory.joint_names = list(self.joint_names)
 
-        # Important: do NOT set a future stamp
+        # Don't set a future stamp
         g.trajectory.header.stamp.sec = 0
         g.trajectory.header.stamp.nanosec = 0
 
@@ -156,8 +168,9 @@ class AirGraspDrop(Node):
         g.trajectory.points = [p0, p1]
 
         self.get_logger().info(
-            f"[TRAJ] -> yaw={goal.joint_wrist_yaw:.2f} fingerL={goal.joint_gripper_finger_left:.3f}"
+            f"[TRAJ] fingerL={goal.joint_gripper_finger_left:.3f} lift={goal.joint_lift:.3f} ext={goal.wrist_extension:.3f}"
         )
+
         send_fut = self.traj_client.send_goal_async(g)
         rclpy.spin_until_future_complete(self, send_fut, timeout_sec=float(self.cfg.traj_timeout_s))
         if not send_fut.done():
@@ -179,91 +192,72 @@ class AirGraspDrop(Node):
         ok = int(result.error_code) == 0
         err_str = getattr(result, "error_string", "")
         self.get_logger().info(f"[TRAJ] done ok={ok} error_code={result.error_code} err='{err_str}'")
-        time.sleep(0.2)
+        time.sleep(0.15)
         return ok
 
     # ---------- main behavior ----------
     def run(self, drop: str, step_m: float, speed_mps: float) -> int:
-        # Tuning
         grip_open = 0.05
         grip_closed = 0.01
 
-        yaw_right = +0.70
-        yaw_mid = 0.00
-        yaw_left = -0.70
-
-        # How many forward "steps" to reach the requested drop zone
         steps_needed = {"right": 0, "middle": 1, "left": 2}[drop]
         dist_total = steps_needed * float(step_m)
 
-        self.get_logger().info(f"[PLAN] drop='{drop}' steps={steps_needed} step_m={step_m:.3f} total_m={dist_total:.3f}")
+        self.get_logger().info(
+            f"[PLAN] drop='{drop}' steps={steps_needed} step_m={step_m:.3f} total_m={dist_total:.3f}"
+        )
 
-        # Start pose: RIGHT, open
         cur = Pose(
             wrist_extension=0.20,
             joint_lift=0.35,
-            joint_wrist_yaw=yaw_right,
+            joint_wrist_yaw=0.0,
             joint_wrist_pitch=-0.30,
             joint_wrist_roll=0.0,
             joint_gripper_finger_left=grip_open,
         )
 
-        # 1) Go to position mode and pinch at RIGHT
-        if not self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0):
+        # 1) Position mode: open then pinch
+        if not self._ensure_pos_mode():
             return 2
 
-        self.get_logger().info("[STEP] Right: ensure open")
-        if not self._send_pose(cur, Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_open}), 0.6):
+        self.get_logger().info("[STEP] Ensure open")
+        open_pose = Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_open})
+        if not self._send_pose(cur, open_pose, 0.6):
             return 3
+        cur = open_pose
 
-        self.get_logger().info("[STEP] Right: close (pinch)")
+        self.get_logger().info("[STEP] Close (pinch)")
         pinch = Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_closed})
         if not self._send_pose(cur, pinch, 0.8):
             return 3
         cur = pinch
 
-        # 2) Navigate forward to drop zone while staying closed
+        # 2) Nav mode: drive (cmd_vel only works here)
         if dist_total > 0.0:
-            if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
-                return 4
             self.get_logger().info(f"[STEP] Drive forward {dist_total:.3f} m (time-based)")
-            self._drive_forward_distance(dist_total, speed_mps)
+            self._drive_forward_distance_nav(dist_total, speed_mps)
 
-        # 3) Switch back to position mode, orient wrist to target zone, then release
-        if not self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0):
+        # 3) Position mode: release
+        if not self._ensure_pos_mode():
             return 5
-
-        target_yaw = {"right": yaw_right, "middle": yaw_mid, "left": yaw_left}[drop]
-
-        self.get_logger().info(f"[STEP] Rotate wrist to {drop.upper()} (yaw={target_yaw:.2f}) while holding closed")
-        hold_at_drop = Pose(**{**cur.__dict__, "joint_wrist_yaw": target_yaw, "joint_gripper_finger_left": grip_closed})
-        if not self._send_pose(cur, hold_at_drop, 1.0):
-            return 6
-        cur = hold_at_drop
 
         self.get_logger().info(f"[STEP] Release at {drop.upper()} (open)")
         released = Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_open})
         if not self._send_pose(cur, released, 0.7):
-            return 7
-        cur = released
-
-        # Optional: return wrist yaw neutral
-        self.get_logger().info("[STEP] Return yaw neutral (optional)")
-        neutral = Pose(**{**cur.__dict__, "joint_wrist_yaw": 0.0})
-        self._send_pose(cur, neutral, 1.0)
+            return 6
 
         self.get_logger().info("[DONE] Air-grasp drop complete")
         return 0
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Air-grasp then drop at right/middle/left")
+    parser = argparse.ArgumentParser(description="Air-grasp then drop at right/middle/left (cmd_vel only in nav mode)")
     parser.add_argument("--drop", choices=["right", "middle", "left"], default="middle",
                         help="Where to release the pinch (default: middle)")
     parser.add_argument("--step-m", type=float, default=0.45,
-                        help="Forward distance (meters) between right->middle and middle->left (default: 0.45)")
+                        help="Forward distance (m) between right->middle and middle->left (default: 0.45)")
     parser.add_argument("--speed", type=float, default=0.05,
-                        help="Forward driving speed in m/s (default: 0.05)")
+                        help="Forward driving speed (m/s) (default: 0.05)")
     args, ros_args = parser.parse_known_args()
 
     rclpy.init(args=ros_args)
@@ -271,7 +265,8 @@ def main():
     try:
         rc = node.run(drop=args.drop, step_m=args.step_m, speed_mps=args.speed)
     finally:
-        node._stop_base()
+        # Stop safely (requires nav mode)
+        node._stop_base_nav()
         node.destroy_node()
         rclpy.shutdown()
     raise SystemExit(rc)
