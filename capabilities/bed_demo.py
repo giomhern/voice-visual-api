@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import time
 from dataclasses import dataclass
 from typing import List
@@ -21,7 +22,7 @@ from builtin_interfaces.msg import Duration
 class Config:
     cmd_vel_topic: str = "/stretch/cmd_vel"
 
-    # Mode switch services (these are the ones you already used successfully)
+    # Mode switch services
     switch_to_nav_srv: str = "/switch_to_navigation_mode"
     switch_to_pos_srv: str = "/switch_to_position_mode"
 
@@ -36,7 +37,7 @@ class Config:
 class Pose:
     wrist_extension: float = 0.20
     joint_lift: float = 0.35
-    joint_wrist_yaw: float = 0.0
+    joint_wrist_yaw: float = 0.70     # start at RIGHT by default
     joint_wrist_pitch: float = -0.30
     joint_wrist_roll: float = 0.0
     joint_gripper_finger_left: float = 0.05  # open-ish
@@ -48,9 +49,9 @@ def dur(t: float) -> Duration:
     return Duration(sec=sec, nanosec=nanosec)
 
 
-class AirGraspDemo(Node):
+class AirGraspDrop(Node):
     def __init__(self, cfg: Config):
-        super().__init__("air_grasp_demo_position_mode")
+        super().__init__("air_grasp_drop")
         self.cfg = cfg
 
         self.cmd_pub = self.create_publisher(Twist, cfg.cmd_vel_topic, 10)
@@ -99,15 +100,23 @@ class AirGraspDemo(Node):
             self.get_logger().error(f"[SRV] {name} failed: {e}")
             return False
 
-    def _drive_forward(self, v: float = 0.05, duration_s: float = 1.0):
-        if duration_s <= 0:
+    def _drive_forward_distance(self, meters: float, speed_mps: float):
+        """
+        Simple time-based drive. If you want odom-precise distance like your PrecisePath node,
+        we can swap this to odom-based control.
+        """
+        if meters <= 0:
             return
+        speed_mps = max(0.01, float(speed_mps))
+        duration_s = meters / speed_mps
+
         msg = Twist()
-        msg.linear.x = float(v)
+        msg.linear.x = float(speed_mps)
         t0 = time.time()
         while time.time() - t0 < duration_s:
             self.cmd_pub.publish(msg)
             time.sleep(0.05)
+
         self._stop_base()
 
     def _send_pose(self, start: Pose, goal: Pose, duration_s: float) -> bool:
@@ -146,10 +155,11 @@ class AirGraspDemo(Node):
 
         g.trajectory.points = [p0, p1]
 
-        self.get_logger().info(f"[TRAJ] Sending -> yaw={goal.joint_wrist_yaw:.2f} fingerL={goal.joint_gripper_finger_left:.3f}")
+        self.get_logger().info(
+            f"[TRAJ] -> yaw={goal.joint_wrist_yaw:.2f} fingerL={goal.joint_gripper_finger_left:.3f}"
+        )
         send_fut = self.traj_client.send_goal_async(g)
         rclpy.spin_until_future_complete(self, send_fut, timeout_sec=float(self.cfg.traj_timeout_s))
-
         if not send_fut.done():
             self.get_logger().error("[TRAJ] send_goal timed out")
             return False
@@ -172,12 +182,9 @@ class AirGraspDemo(Node):
         time.sleep(0.2)
         return ok
 
-    # ---------- demo ----------
-    def run(self) -> int:
-        # Tune these
-        forward_each_step_s = 1.0
-        forward_speed = 0.05
-
+    # ---------- main behavior ----------
+    def run(self, drop: str, step_m: float, speed_mps: float) -> int:
+        # Tuning
         grip_open = 0.05
         grip_closed = 0.01
 
@@ -185,81 +192,84 @@ class AirGraspDemo(Node):
         yaw_mid = 0.00
         yaw_left = -0.70
 
+        # How many forward "steps" to reach the requested drop zone
+        steps_needed = {"right": 0, "middle": 1, "left": 2}[drop]
+        dist_total = steps_needed * float(step_m)
+
+        self.get_logger().info(f"[PLAN] drop='{drop}' steps={steps_needed} step_m={step_m:.3f} total_m={dist_total:.3f}")
+
+        # Start pose: RIGHT, open
         cur = Pose(
             wrist_extension=0.20,
             joint_lift=0.35,
+            joint_wrist_yaw=yaw_right,
             joint_wrist_pitch=-0.30,
             joint_wrist_roll=0.0,
-            joint_wrist_yaw=0.0,
             joint_gripper_finger_left=grip_open,
         )
 
-        # 1) Position mode for arm/gripper
+        # 1) Go to position mode and pinch at RIGHT
         if not self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0):
             return 2
 
-        # RIGHT open -> close
-        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_right, "joint_gripper_finger_left": grip_open})
-        if not self._send_pose(cur, goal, 1.3): return 3
-        cur = goal
+        self.get_logger().info("[STEP] Right: ensure open")
+        if not self._send_pose(cur, Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_open}), 0.6):
+            return 3
 
-        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_right, "joint_gripper_finger_left": grip_closed})
-        if not self._send_pose(cur, goal, 0.8): return 3
-        cur = goal
+        self.get_logger().info("[STEP] Right: close (pinch)")
+        pinch = Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_closed})
+        if not self._send_pose(cur, pinch, 0.8):
+            return 3
+        cur = pinch
 
-        # Nav mode for base
-        if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
-            return 4
-        self._drive_forward(forward_speed, forward_each_step_s)
+        # 2) Navigate forward to drop zone while staying closed
+        if dist_total > 0.0:
+            if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
+                return 4
+            self.get_logger().info(f"[STEP] Drive forward {dist_total:.3f} m (time-based)")
+            self._drive_forward_distance(dist_total, speed_mps)
 
-        # Back to position mode
+        # 3) Switch back to position mode, orient wrist to target zone, then release
         if not self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0):
             return 5
 
-        # MIDDLE (closed) -> open -> close
-        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_mid, "joint_gripper_finger_left": grip_closed})
-        if not self._send_pose(cur, goal, 1.0): return 6
-        cur = goal
+        target_yaw = {"right": yaw_right, "middle": yaw_mid, "left": yaw_left}[drop]
 
-        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_mid, "joint_gripper_finger_left": grip_open})
-        if not self._send_pose(cur, goal, 0.6): return 6
-        cur = goal
+        self.get_logger().info(f"[STEP] Rotate wrist to {drop.upper()} (yaw={target_yaw:.2f}) while holding closed")
+        hold_at_drop = Pose(**{**cur.__dict__, "joint_wrist_yaw": target_yaw, "joint_gripper_finger_left": grip_closed})
+        if not self._send_pose(cur, hold_at_drop, 1.0):
+            return 6
+        cur = hold_at_drop
 
-        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_mid, "joint_gripper_finger_left": grip_closed})
-        if not self._send_pose(cur, goal, 0.8): return 6
-        cur = goal
-
-        # Nav mode for base
-        if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
+        self.get_logger().info(f"[STEP] Release at {drop.upper()} (open)")
+        released = Pose(**{**cur.__dict__, "joint_gripper_finger_left": grip_open})
+        if not self._send_pose(cur, released, 0.7):
             return 7
-        self._drive_forward(forward_speed, forward_each_step_s)
+        cur = released
 
-        # Back to position mode
-        if not self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0):
-            return 8
+        # Optional: return wrist yaw neutral
+        self.get_logger().info("[STEP] Return yaw neutral (optional)")
+        neutral = Pose(**{**cur.__dict__, "joint_wrist_yaw": 0.0})
+        self._send_pose(cur, neutral, 1.0)
 
-        # LEFT (closed) -> open
-        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_left, "joint_gripper_finger_left": grip_closed})
-        if not self._send_pose(cur, goal, 1.0): return 9
-        cur = goal
-
-        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": yaw_left, "joint_gripper_finger_left": grip_open})
-        if not self._send_pose(cur, goal, 0.6): return 9
-        cur = goal
-
-        # Neutral
-        goal = Pose(**{**cur.__dict__, "joint_wrist_yaw": 0.0, "joint_gripper_finger_left": grip_open})
-        if not self._send_pose(cur, goal, 1.0): return 10
-
-        self.get_logger().info("[DEMO] done")
+        self.get_logger().info("[DONE] Air-grasp drop complete")
         return 0
 
 
 def main():
-    rclpy.init()
-    node = AirGraspDemo(Config())
+    parser = argparse.ArgumentParser(description="Air-grasp then drop at right/middle/left")
+    parser.add_argument("--drop", choices=["right", "middle", "left"], default="middle",
+                        help="Where to release the pinch (default: middle)")
+    parser.add_argument("--step-m", type=float, default=0.45,
+                        help="Forward distance (meters) between right->middle and middle->left (default: 0.45)")
+    parser.add_argument("--speed", type=float, default=0.05,
+                        help="Forward driving speed in m/s (default: 0.05)")
+    args, ros_args = parser.parse_known_args()
+
+    rclpy.init(args=ros_args)
+    node = AirGraspDrop(Config())
     try:
-        rc = node.run()
+        rc = node.run(drop=args.drop, step_m=args.step_m, speed_mps=args.speed)
     finally:
         node._stop_base()
         node.destroy_node()
