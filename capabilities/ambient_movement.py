@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import math
 import time
-import random
 
 import rclpy
 from rclpy.node import Node
@@ -14,52 +13,44 @@ def clamp(x, lo, hi):
     return max(lo, min(hi, x))
 
 
-class OrganicAmbientMotion(Node):
+class SmoothAmbientMotion(Node):
     """
-    Smooth + organic ambient motion.
-
-    Adds:
-      - sinusoidal sway
-      - slow random amplitude modulation
-      - random bias drift
-      - tiny spontaneous micro-turns
+    Smooth continuous sway:
+      - left <-> right base rotation
+      - gentle forward/back motion
+    No pauses. No randomness. Pure fluid motion.
     """
 
     def __init__(self):
-        super().__init__("organic_ambient_motion")
+        super().__init__("smooth_ambient_motion")
 
         self.pub = self.create_publisher(Twist, "/stretch/cmd_vel", 10)
 
-        # === BASE PARAMETERS (safe defaults) ===
-        self.yaw_amp_deg = 5.0
-        self.yaw_period = 6.0
+        # === Tunable Parameters ===
+        self.yaw_amp_deg = 6.0       # how far left/right (degrees)
+        self.yaw_period_s = 5.0      # shorter = more lively
 
-        self.fb_amp_m = 0.02
-        self.fb_period = 5.0
+        self.fb_amp_m = 0.02         # 2 cm forward/back
+        self.fb_period_s = 5.0
 
         self.update_hz = 30.0
         self.dt = 1.0 / self.update_hz
 
+        # Safety caps
         self.lin_cap = 0.06
         self.ang_cap = 0.25
 
         self.max_lin_acc = 0.15
         self.max_ang_acc = 0.35
 
-        # === Internal state ===
+        # Internal
         self.t0 = time.monotonic()
         self.v_prev = 0.0
         self.w_prev = 0.0
 
-        # Organic modifiers
-        self.bias = 0.0
-        self.bias_target = 0.0
-        self.micro_burst_timer = 0.0
-        self.micro_burst_strength = 0.0
-
         self.timer = self.create_timer(self.dt, self._tick)
 
-        self.get_logger().info("Organic ambient motion started.")
+        self.get_logger().info("Smooth ambient motion running.")
 
     def _rate_limit(self, v_cmd, w_cmd):
         dv_max = self.max_lin_acc * self.dt
@@ -74,51 +65,20 @@ class OrganicAmbientMotion(Node):
         self.v_prev, self.w_prev = v, w
         return v, w
 
-    def _update_bias(self):
-        # Occasionally choose new drift target
-        if random.random() < 0.005:
-            self.bias_target = random.uniform(-0.05, 0.05)
-
-        # Smoothly move toward target
-        self.bias += (self.bias_target - self.bias) * 0.01
-
-    def _maybe_trigger_micro_burst(self):
-        if self.micro_burst_timer <= 0 and random.random() < 0.003:
-            self.micro_burst_timer = random.uniform(0.3, 0.8)
-            self.micro_burst_strength = random.uniform(-0.15, 0.15)
-
-    def _update_micro_burst(self):
-        if self.micro_burst_timer > 0:
-            self.micro_burst_timer -= self.dt
-            return self.micro_burst_strength
-        return 0.0
-
     def _tick(self):
         t = time.monotonic() - self.t0
 
-        # Slight random modulation of period
-        yaw_period_mod = self.yaw_period + random.uniform(-0.3, 0.3)
-        fb_period_mod = self.fb_period + random.uniform(-0.3, 0.3)
-
+        # Convert position amplitude -> velocity amplitude
         yaw_A = math.radians(self.yaw_amp_deg)
-        yaw_w = 2 * math.pi / yaw_period_mod
+        yaw_w = 2 * math.pi / self.yaw_period_s
 
         fb_A = self.fb_amp_m
-        fb_w = 2 * math.pi / fb_period_mod
+        fb_w = 2 * math.pi / self.fb_period_s
 
-        # Base smooth motion
+        # Smooth velocity commands
         w_cmd = yaw_A * yaw_w * math.cos(yaw_w * t)
         v_cmd = fb_A * fb_w * math.cos(fb_w * t + math.pi / 2)
 
-        # Add organic drift
-        self._update_bias()
-        w_cmd += self.bias
-
-        # Add spontaneous micro-expression
-        self._maybe_trigger_micro_burst()
-        w_cmd += self._update_micro_burst()
-
-        # Rate limit + cap
         v, w = self._rate_limit(v_cmd, w_cmd)
 
         msg = Twist()
@@ -128,12 +88,12 @@ class OrganicAmbientMotion(Node):
 
     def stop(self):
         self.pub.publish(Twist())
-        self.get_logger().info("Organic ambient motion stopped.")
+        self.get_logger().info("Ambient motion stopped.")
 
 
 def main():
     rclpy.init()
-    node = OrganicAmbientMotion()
+    node = SmoothAmbientMotion()
 
     try:
         rclpy.spin(node)
