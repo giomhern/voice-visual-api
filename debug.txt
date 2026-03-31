@@ -1,681 +1,171 @@
+use this file for the right map: 
+
+ros2 launch stretch_funmap mapping.launch.py map_yaml:=/home/hello-robot/stretch_user/debug/merged_maps/merged_map_20260327144300
+
+to localize: 
+ros2 service call /funmap/trigger_global_localization std_srvs/srv/Trigger {}
+ros2 service call /funmap/trigger_local_localization std_srvs/srv/Trigger {}
+
+to teleop:
+
+ros2 run stretch_core keyboard_teleop
+
+to get coordinates:
+
+ros2 run tf2_ros tf2_echo map base_footprint
+
+
+do the steps:
+1. rotate left by 90 degrees same as in desk demo 
+2. raise height of the lift to be like according to this 
+
+ros2 topic echo /joint_states --once
 header:
   stamp:
-    sec: 1770931267
-    nanosec: 645028058
+    sec: 1774902155
+    nanosec: 749623541
   frame_id: ''
 name:
-- wrist_extension
+- joint_right_wheel
+- joint_left_wheel
 - joint_lift
 - joint_arm_l3
 - joint_arm_l2
 - joint_arm_l1
 - joint_arm_l0
+- joint_wrist_yaw
 - joint_head_pan
 - joint_head_tilt
-- joint_wrist_yaw
 - joint_wrist_pitch
 - joint_wrist_roll
-- joint_gripper_finger_left
 - joint_gripper_finger_right
-
-ros2 action send_goal <ACTION_NAME> control_msgs/action/FollowJointTrajectory "{
-  trajectory: {
-    joint_names: ['joint_head_pan', 'joint_head_tilt'],
-    points: [
-      { positions: [0.0, 0.0],  time_from_start: {sec: 1, nanosec: 0} },
-      { positions: [0.0, 0.35], time_from_start: {sec: 2, nanosec: 0} },
-      { positions: [0.0, -0.20],time_from_start: {sec: 3, nanosec: 0} },
-      { positions: [0.0, 0.0],  time_from_start: {sec: 4, nanosec: 0} }
-    ]
-  }
-}"
-
-[INFO] [1771965635.777888866] [head_nod_working]: Waiting for /joint_states...
-[INFO] [1771965635.779459157] [head_nod_working]: Start: pan=-0.002, tilt=0.026
-[INFO] [1771965635.779664522] [head_nod_working]: Waiting for action server: /stretch_controller/follow_joint_trajectory
-[INFO] [1771965635.780048968] [head_nod_working]: Sending nod goal...
-[INFO] [1771965635.783042873] [head_nod_working]: Goal accepted. Waiting for result (and spinning)...
-[INFO] [1771965635.875142061] [head_nod_working]: Result: status=4, error_code=0, error_string='Achieved all target points.'
-
-[stretch_driver-3] [INFO] [1771965635.785767561] [stretch_driver]: stretch_driver joint_traj action: New trajectory received with joint_names = ['joint_head_pan', 'joint_head_tilt']
-[stretch_driver-3] -------------------------------------------
-[stretch_driver-3] Finished goal
-[stretch_driver-3] [INFO] [1771965635.872805182] [stretch_driver]: stretch_driver joint_traj action: Achieved all target points.
-
-
-ros2 launch stretch_demos grasp_object.launch.py 
-[INFO] [launch]: All log files can be found below /home/hello-robot/.ros/log/2026-03-03-15-04-58-622921-stretch-se3-3103-11253
-[INFO] [launch]: Default logging verbosity is set to INFO
-[INFO] [launch.user]: D435i launched in high resolution
-[INFO] [realsense2_camera_node-1]: process started with pid [11270]
-[INFO] [stretch_driver-5]: process started with pid [11278]
-[INFO] [d435i_accel_correction-2]: process started with pid [11272]
-[INFO] [joint_state_publisher-3]: process started with pid [11274]
-[INFO] [robot_state_publisher-4]: process started with pid [11276]
-[INFO] [funmap-6]: process started with pid [11280]
-[INFO] [grasp_object-7]: process started with pid [11282]
-[INFO] [static_transform_publisher-8]: process started with pid [11284]
-[static_transform_publisher-8] [INFO] [1772571898.947449876] [static_transform_publisher_9rhdtv3GbzVZfiPi]: Spinning until stopped - publishing transform
-[static_transform_publisher-8] translation: ('0.000000', '0.000000', '0.000000')
-[static_transform_publisher-8] rotation: ('0.500000', '0.500000', '-0.500000', '0.500000')
-[static_transform_publisher-8] from 'link_straight_gripper' to 'link_straight_gripper_aligned'
-[d435i_accel_correction-2] [INFO] [1772571899.398097864] [d435i_accel_correction_node]: d435i_accel_correction_node started
-[realsense2_camera_node-1] [INFO] [1772571899.580878205] [camera]: RealSense ROS v4.55.1
-[realsense2_camera_node-1] [INFO] [1772571899.580999994] [camera]: Built with LibRealSense v2.56.5
-[realsense2_camera_node-1] [INFO] [1772571899.581010682] [camera]: Running with LibRealSense v2.56.5
-[realsense2_camera_node-1] [INFO] [1772571899.621905985] [camera]: Device with serial number 246422071246 was found.
-[realsense2_camera_node-1] 
-[realsense2_camera_node-1] [INFO] [1772571899.622317056] [camera]: Device with physical ID /sys/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:1.0/video4linux/video0 was found.
-[realsense2_camera_node-1] [INFO] [1772571899.622334138] [camera]: Device with name Intel RealSense D435IF was found.
-[realsense2_camera_node-1] [INFO] [1772571899.622527765] [camera]: Device with port number 2-1 was found.
-[realsense2_camera_node-1] [INFO] [1772571899.622547351] [camera]: Device USB type: 3.2
-[realsense2_camera_node-1] [INFO] [1772571899.622559978] [camera]: Resetting device...
-[grasp_object-7] [INFO] [1772571900.069811396] [stretch_funmap]: MoveBase __init__: self.debug_directory = None
-[grasp_object-7] MaxHeightImage information:
-[grasp_object-7]      image.shape = (67, 25)
-[grasp_object-7]      image.dtype = uint8
-[grasp_object-7]      m_per_pix = 0.006
-[grasp_object-7]      m_per_height_unit = 0.00027667984189723324
-[grasp_object-7]      voi.x_in_m = 0.15
-[grasp_object-7]      voi.y_in_m = 0.4
-[grasp_object-7]      voi.z_in_m = 0.07
-[grasp_object-7] MaxHeightImage information:
-[grasp_object-7]      image.shape = (434, 350)
-[grasp_object-7]      image.dtype = uint8
-[grasp_object-7]      m_per_pix = 0.006
-[grasp_object-7]      m_per_height_unit = 0.004566929133858267
-[grasp_object-7]      voi.x_in_m = 2.1
-[grasp_object-7]      voi.y_in_m = 2.6
-[grasp_object-7]      voi.z_in_m = 1.16
-[grasp_object-7] Traceback (most recent call last):
-[grasp_object-7]   File "/home/hello-robot/ament_ws/install/stretch_demos/lib/stretch_demos/grasp_object", line 33, in <module>
-[grasp_object-7]     sys.exit(load_entry_point('stretch-demos', 'console_scripts', 'grasp_object')())
-[grasp_object-7]   File "/home/hello-robot/ament_ws/build/stretch_demos/stretch_demos/grasp_object.py", line 233, in main
-[grasp_object-7]     node = GraspObjectNode()
-[grasp_object-7]   File "/home/hello-robot/ament_ws/build/stretch_demos/stretch_demos/grasp_object.py", line 28, in __init__
-[grasp_object-7]     self.move_base = nv.MoveBase(self)
-[grasp_object-7]   File "/home/hello-robot/ament_ws/build/stretch_funmap/stretch_funmap/navigate.py", line 216, in __init__
-[grasp_object-7]     self.node.create_subscription(
-[grasp_object-7]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 1353, in create_subscription
-[grasp_object-7]     callback_group = callback_group or self.default_callback_group
-[grasp_object-7]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py", line 304, in default_callback_group
-[grasp_object-7]     return self._default_callback_group
-[grasp_object-7] AttributeError: 'GraspObjectNode' object has no attribute '_default_callback_group'. Did you mean: 'default_callback_group'?
-[funmap-6] /home/hello-robot/ament_ws/src/stretch_ros2/stretch_funmap/.venv/lib/python3.10/site-packages/matplotlib/projections/__init__.py:63: UserWarning: Unable to import Axes3D. This may be due to multiple versions of Matplotlib being installed (e.g. as a system package and as a pip package). As a result, the 3D projection is not available.
-[funmap-6]   warnings.warn("Unable to import Axes3D. This may be due to multiple versions of "
-[ERROR] [grasp_object-7]: process has died [pid 11282, exit code 1, cmd '/home/hello-robot/ament_ws/install/stretch_demos/lib/stretch_demos/grasp_object --ros-args --params-file /tmp/launch_params_e8bsbatx'].
-[stretch_driver-5] [INFO] [1772571900.652983715] [stretch_driver]: For use with S T R E T C H (TM) RESEARCH EDITION from Hello Robot Inc.
-[stretch_driver-5] [INFO] [1772571900.653340371] [stretch_driver]: stretch_driver started
-[funmap-6] [INFO] [1772571900.657684962] [funmap]: funmap started
-[stretch_driver-5] Key mapped to End-Of-Arm Tool: eoa_wrist_dw3_tool_sg3
-[stretch_driver-5] [INFO] [1772571902.384910006] [stretch_driver]: broadcast_odom_tf = True
-[stretch_driver-5] [INFO] [1772571902.415209413] [stretch_driver]: rate = 30.0 Hz
-[stretch_driver-5] [INFO] [1772571902.417147347] [stretch_driver]: twist timeout = 0.5 s
-[stretch_driver-5] [INFO] [1772571902.418757198] [stretch_driver]: base_frame_id = base_link
-[stretch_driver-5] [INFO] [1772571902.419499042] [stretch_driver]: odom_frame_id = odom
-[stretch_driver-5] [INFO] [1772571902.457414037] [stretch_driver]: Changed to mode = position
-[funmap-6] [INFO] [1772571902.697050011] [funmap]: Node funmap connected to /home_the_robot service.
-[funmap-6] [INFO] [1772571902.698011358] [funmap]: Node funmap connected to /stow_the_robot service.
-[funmap-6] [INFO] [1772571902.698847530] [funmap]: Node funmap connected to /stop_the_robot service.
-[funmap-6] [INFO] [1772571902.702413925] [funmap]: Node funmap connected to /switch_to_trajectory_mode service.
-[funmap-6] [INFO] [1772571902.703300187] [funmap]: Node funmap connected to /switch_to_position_mode service.
-[funmap-6] [INFO] [1772571902.704056300] [funmap]: Node funmap connected to /switch_to_navigation_mode service.
-[funmap-6] [INFO] [1772571902.704316572] [funmap]: Node funmap waiting to receive first point cloud.
-[realsense2_camera_node-1] [INFO] [1772571905.679408742] [camera]: Device with serial number 246422071246 was found.
-[realsense2_camera_node-1] 
-[realsense2_camera_node-1] [INFO] [1772571905.679571064] [camera]: Device with physical ID /sys/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:1.0/video4linux/video0 was found.
-[realsense2_camera_node-1] [INFO] [1772571905.679593543] [camera]: Device with name Intel RealSense D435IF was found.
-[realsense2_camera_node-1] [INFO] [1772571905.679898022] [camera]: Device with port number 2-1 was found.
-[realsense2_camera_node-1] [INFO] [1772571905.679926625] [camera]: Device USB type: 3.2
-[realsense2_camera_node-1] [INFO] [1772571905.680059338] [camera]: getParameters...
-[realsense2_camera_node-1] [INFO] [1772571906.022030977] [camera]: JSON file is loaded! (/home/hello-robot/ament_ws/install/stretch_core/share/stretch_core/config/HighAccuracyPreset.json)
-[realsense2_camera_node-1] [INFO] [1772571906.022162224] [camera]: Device Name: Intel RealSense D435IF
-[realsense2_camera_node-1] [INFO] [1772571906.022269857] [camera]: Device Serial No: 246422071246
-[realsense2_camera_node-1] [INFO] [1772571906.022340405] [camera]: Device physical port: /sys/devices/pci0000:00/0000:00:0d.0/usb2/2-1/2-1:1.0/video4linux/video0
-[realsense2_camera_node-1] [INFO] [1772571906.022363639] [camera]: Device FW version: 5.17.0.10
-[realsense2_camera_node-1] [INFO] [1772571906.022383149] [camera]: Device Product ID: 0x0B3A
-[realsense2_camera_node-1] [INFO] [1772571906.022402082] [camera]: Sync Mode: On
-[realsense2_camera_node-1] [WARN] [1772571906.150356869] [camera]: re-enable the stream for the change to take effect.
-[realsense2_camera_node-1] [WARN] [1772571906.151067372] [camera]: re-enable the stream for the change to take effect.
-[realsense2_camera_node-1] [WARN] [1772571906.158618905] [camera]: re-enable the stream for the change to take effect.
-[realsense2_camera_node-1] [ERROR] [1772571906.159241490] [camera]: Given value, 63 is invalid. Set ROS param back to: 100
-[realsense2_camera_node-1] [INFO] [1772571906.163987180] [camera]: Stopping Sensor: Depth Module
-[realsense2_camera_node-1] [INFO] [1772571906.164053057] [camera]: Stopping Sensor: RGB Camera
-[realsense2_camera_node-1] [INFO] [1772571906.164070840] [camera]: Stopping Sensor: Motion Module
-[realsense2_camera_node-1] [INFO] [1772571906.184550166] [camera]: Starting Sensor: Depth Module
-[realsense2_camera_node-1] [INFO] [1772571906.186917826] [camera]: Open profile: stream_type: Depth(0), Format: Z16, Width: 1280, Height: 720, FPS: 15
-[realsense2_camera_node-1] [INFO] [1772571906.189499249] [camera]: Starting Sensor: RGB Camera
-[realsense2_camera_node-1] [INFO] [1772571906.191717067] [camera]: Open profile: stream_type: Color(0), Format: RGB8, Width: 1280, Height: 720, FPS: 15
-[realsense2_camera_node-1] [INFO] [1772571906.209544900] [camera]: Starting Sensor: Motion Module
-[realsense2_camera_node-1] [INFO] [1772571906.210556438] [camera]: Open profile: stream_type: Accel(0)Format: MOTION_XYZ32F, FPS: 100
-[realsense2_camera_node-1] [INFO] [1772571906.210576707] [camera]: Open profile: stream_type: Gyro(0)Format: MOTION_XYZ32F, FPS: 200
-[realsense2_camera_node-1] [INFO] [1772571906.211965281] [camera]: RealSense Node Is Up!
-[funmap-6] [INFO] [1772571907.010190558] [funmap]: Node funmap received first point cloud, so continuing.
-[funmap-6] [INFO] [1772571907.032854279] [stretch_funmap]: MoveBase __init__: self.debug_directory = /home/hello-robot/stretch_user/debug/
-[realsense2_camera_node-1] [WARN] [1772571907.184945786] [camera]: XXX Hardware Notification:Motion Module failure,1.77257e+12,Error,Hardware Error
-[realsense2_camera_node-1] [WARN] [1772571907.185016080] [camera]: Hardware Notification:Motion Module failure,1.77257e+12,Error,Hardware Error
-
-
-#!/usr/bin/env python3
-
-from sensor_msgs.msg import JointState
-
-import rclpy
-from rclpy.callback_groups import ReentrantCallbackGroup
-import rclpy.logging
-
-from std_srvs.srv import Trigger
-
-import time
-import threading
-import numpy as np
-import os
-
-import hello_helpers.hello_misc as hm
-import stretch_funmap.navigate as nv
-import stretch_funmap.manipulation_planning as mp
-
-
-class GraspObjectNode(hm.HelloNode):
-
-    def __init__(self):
-        hm.HelloNode.__init__(self)
-        self.rate = 10.0
-        self.joint_states = None
-        self.joint_states_lock = threading.Lock()
-        self.move_base = nv.MoveBase(self)
-        self.tool = None
-        self.letter_height_m = 0.2
-        self.wrist_position = None
-        self.lift_position = None
-        self.manipulation_view = None
-        self.debug_directory = None
-        
-    def joint_states_callback(self, joint_states):
-        with self.joint_states_lock: 
-            self.joint_states = joint_states
-        wrist_position, wrist_velocity, wrist_effort = hm.get_wrist_state(joint_states)
-        self.wrist_position = wrist_position
-        lift_position, lift_velocity, lift_effort = hm.get_lift_state(joint_states)
-        self.lift_position = lift_position
-        self.left_finger_position, temp1, temp2 = hm.get_left_finger_state(joint_states)
-
-    def lower_tool_until_contact(self):
-        if (self.dryrun):
-            return
-
-        self.logger.info('lower_tool_until_contact')
-        trigger_request = Trigger.Request() 
-        trigger_result = self.trigger_lower_until_contact_service.call_async(trigger_request)
-        self.logger.info('trigger_result = {0}'.format(trigger_result))
-
-    def look_at_surface(self, scan_time_s=None):
-        if self.dryrun:
-            return
-
-        self.manipulation_view = mp.ManipulationView(self.tf2_buffer, self.debug_directory, self.get_tool())
-        manip = self.manipulation_view
-        head_settle_time_s = 0.02 #1.0
-        manip.move_head(self.move_to_pose)
-        time.sleep(head_settle_time_s)
-        if scan_time_s is None:
-            manip.update(self.point_cloud, self.tf2_buffer)
-        else:
-            start_time_s = time.time()
-            while ((time.time() - start_time_s) < scan_time_s): 
-                manip.update(self.point_cloud, self.tf2_buffer)
-        if self.debug_directory is not None:
-            dirname = self.debug_directory + 'grasp_object/'
-            # If the directory does not already exist, create it.
-            if not os.path.exists(dirname):
-                os.makedirs(dirname)
-            filename = 'look_at_surface_' + hm.create_time_string()
-            manip.save_scan(dirname + filename)
-        else:
-            self.logger.info('GraspObjectNode: No debug directory provided, so debugging data will not be saved.')
-
-    def drive(self, forward_m):
-        if (self.dryrun):
-            return
-
-        tolerance_distance_m = 0.005
-        if forward_m > 0: 
-            at_goal = self.move_base.forward(forward_m, detect_obstacles=False, tolerance_distance_m=tolerance_distance_m)
-        else:
-            at_goal = self.move_base.backward(forward_m, detect_obstacles=False, tolerance_distance_m=tolerance_distance_m)
-
-    def trigger_grasp_object_callback(self, request, response):
-        max_lift_m = 1.09
-        min_extension_m = 0.01
-        max_extension_m = 0.5
-
-        self.logger.info('Stow the arm.')
-        self.stow_the_robot()
-
-        # 1. Scan surface and find grasp target
-        self.look_at_surface(scan_time_s = 4.0)
-        grasp_target = self.manipulation_view.get_grasp_target(self.tf2_buffer)
-        if grasp_target is None:
-            return Trigger.Response(
-                success=False,
-                message='Failed to find grasp target'
-            )
-
-        # 2. Move to pregrasp pose
-        pregrasp_lift_m = self.manipulation_view.get_pregrasp_lift(grasp_target, self.tf2_buffer)
-        if self.tool == "tool_stretch_dex_wrist":
-            pregrasp_lift_m += 0.02
-        if (self.lift_position is None):
-            return Trigger.Response(
-                success=False,
-                message='lift position unavailable'
-            )
-        self.logger.info('Raise tool to pregrasp height.')
-        lift_to_pregrasp_m = max(self.lift_position + pregrasp_lift_m, 0.1)
-        lift_to_pregrasp_m = min(lift_to_pregrasp_m, max_lift_m)
-        pose = {'joint_lift': lift_to_pregrasp_m}
-        self.move_to_pose(pose)
-
-        if self.tool == "tool_stretch_dex_wrist":
-            self.logger.info('Rotate pitch/roll for grasping.')
-            pose = {'joint_wrist_pitch': -0.3, 'joint_wrist_roll': 0.0}
-            self.move_to_pose(pose)
-
-        pregrasp_yaw = self.manipulation_view.get_pregrasp_yaw(grasp_target, self.tf2_buffer)
-        self.logger.info('pregrasp_yaw = {0:.2f} rad'.format(pregrasp_yaw))
-        self.logger.info('pregrasp_yaw = {0:.2f} deg'.format(pregrasp_yaw * (180.0/np.pi)))
-        self.logger.info('Rotate the gripper for grasping.')
-        pose = {'joint_wrist_yaw': pregrasp_yaw}
-        self.move_to_pose(pose)
-
-        self.logger.info('Open the gripper.')
-        pose = {'gripper_aperture': 0.07}
-        self.move_to_pose(pose)
-
-        pregrasp_mobile_base_m, pregrasp_wrist_extension_m = self.manipulation_view.get_pregrasp_planar_translation(grasp_target, self.tf2_buffer)
-        self.logger.info('pregrasp_mobile_base_m = {0:.3f} m'.format(pregrasp_mobile_base_m))
-        self.logger.info('pregrasp_wrist_extension_m = {0:.3f} m'.format(pregrasp_wrist_extension_m))
-        self.logger.info('Drive to pregrasp location.')
-        self.drive(pregrasp_mobile_base_m)
-
-        if pregrasp_wrist_extension_m > 0.0:
-            extension_m = max(self.wrist_position + pregrasp_wrist_extension_m, min_extension_m)
-            extension_m = min(extension_m, max_extension_m)
-            self.logger.info('Extend tool above surface.')
-            pose = {'wrist_extension': extension_m}
-            self.move_to_pose(pose)
-        else:
-            self.logger.info('negative wrist extension for pregrasp, so not extending or retracting.')
-
-        # 3. Grasp the object and lift it
-        grasp_mobile_base_m, grasp_lift_m, grasp_wrist_extension_m = self.manipulation_view.get_grasp_from_pregrasp(grasp_target, self.tf2_buffer)
-        self.logger.info('grasp_mobile_base_m = {0:3f} m, grasp_lift_m = {1:3f} m, grasp_wrist_extension_m = {2:3f} m'.format(grasp_mobile_base_m, grasp_lift_m, grasp_wrist_extension_m))
-        self.logger.info('Move the grasp pose from the pregrasp pose.')
-
-        lift_m = max(self.lift_position + grasp_lift_m, 0.1)
-        lift_m = min(lift_m, max_lift_m)
-        extension_m = max(self.wrist_position + grasp_wrist_extension_m, min_extension_m)
-        extension_m = min(extension_m, max_extension_m)
-        pose = {'translate_mobile_base': grasp_mobile_base_m,
-                'joint_lift': lift_m,
-                'wrist_extension': extension_m}
-        self.move_to_pose(pose)
-
-        self.logger.info('Attempt to close the gripper on the object.')
-        gripper_aperture_m = grasp_target['width_m'] - 0.18
-        pose = {'gripper_aperture': gripper_aperture_m}
-        self.move_to_pose(pose)
-
-        # Lifting appears to happen before the gripper has
-        # finished unless there is this sleep. Need to look
-        # into this issue.
-        time.sleep(3.0)
-
-        self.logger.info('Attempt to lift the object.')
-        object_lift_height_m = 0.1
-        lift_m = max(self.lift_position + object_lift_height_m, 0.2)
-        lift_m = min(lift_m, max_lift_m)
-        pose = {'joint_lift': lift_m}
-        self.move_to_pose(pose)
-
-        self.logger.info('Open the gripper a little to avoid overtorquing and overheating the gripper motor.')
-        pose = {'gripper_aperture': gripper_aperture_m + 0.005}
-        self.move_to_pose(pose)
-
-        self.logger.info('Retract the tool.')
-        pose = {'wrist_extension': 0.01}
-        self.move_to_pose(pose)
-
-        self.logger.info('Reorient the wrist.')
-        pose = {'joint_wrist_yaw': 0.0}
-        self.move_to_pose(pose)
-
-        return Trigger.Response(
-            success=True,
-            message='Completed object grasp!'
-        )
-    
-    def main(self):
-        hm.HelloNode.main(self, 'grasp_object', 'grasp_object', wait_for_first_pointcloud=False)
-        self.logger = self.get_logger()
-
-        self.callback_group = ReentrantCallbackGroup()
-
-        self.debug_directory = self.get_parameter('debug_directory').value
-        self.logger.info('Using the following directory for debugging files: {0}'.format(self.debug_directory))
-
-        self.dryrun = self.get_parameter('dryrun').value
-
-        self.joint_states_subscriber = self.create_subscription(JointState, '/stretch/joint_states', callback=self.joint_states_callback, qos_profile=1, callback_group=self.callback_group)
-
-        self.trigger_grasp_object_service = self.create_service(Trigger,
-                                                                '/grasp_object/trigger_grasp_object',
-                                                                callback=self.trigger_grasp_object_callback,
-                                                                callback_group=self.callback_group)
-
-        self.trigger_reach_until_contact_service = self.create_client(Trigger, '/funmap/trigger_reach_until_contact', callback_group=self.callback_group)
-        self.logger.info("Waiting for /funmap/trigger_reach_until_contact' service")
-        self.trigger_reach_until_contact_service.wait_for_service()
-        self.logger.info('Node ' + self.get_name() + ' connected to /funmap/trigger_reach_until_contact.')
-
-
-        self.trigger_lower_until_contact_service = self.create_client(Trigger, '/funmap/trigger_lower_until_contact', callback_group=self.callback_group)
-        self.logger.info("Waiting for /funmap/trigger_lower_until_contact' service")
-        self.trigger_lower_until_contact_service.wait_for_service()
-        self.logger.info('Node ' + self.get_name() + ' connected to /funmap/trigger_lower_until_contact.')
-
-        self.logger.info("Grasp object node is ready!")
-
-def main():
-    try:
-        node = GraspObjectNode()
-        node.main()
-        
-        node.new_thread.join()
-    except KeyboardInterrupt:
-        rclpy.logging.get_logger('grasp_object').info('interrupt received, so shutting down')
-
-if __name__ == '__main__':
-    main()
-
-
-colcon build --symlink-install
-Starting >>> audio_common_msgs
-Starting >>> realsense2_camera_msgs
-Starting >>> rosbridge_test_msgs
-Starting >>> rosapi_msgs
-Starting >>> hello_helpers
-Starting >>> rosbridge_msgs
-Starting >>> ros2_numpy
-Starting >>> speech_recognition_msgs
-Starting >>> sllidar_ros2
-Starting >>> stretch_deep_perception
-Starting >>> stretch_demos
-Starting >>> stretch_funmap
-Starting >>> stretch_nav2
-Starting >>> stretch_ros_tutorials
-Starting >>> stretch_rtabmap
-Starting >>> tf2_web_republisher
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
-  warnings.warn(msg)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
-  warnings.warn(msg)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
-  warnings.warn(msg)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
-  warnings.warn(msg)
-[03/03/26 15:18:06] WARNING  toml section missing PosixPath('pyproject.toml') does not contain a tool.setuptools_scm section            pyproject_reading.py:215
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:75: _MissingDynamic: `license` defined outside of `pyproject.toml` is ignored.
-!!
-
-        ********************************************************************************
-        The following seems to be defined outside of `pyproject.toml`:
-
-        `license = 'Apache License 2.0'`
-
-        According to the spec (see the link below), however, setuptools CANNOT
-        consider this value unless `license` is listed as `dynamic`.
-
-        https://packaging.python.org/en/latest/specifications/pyproject-toml/#declaring-project-metadata-the-project-table
-
-        To prevent this problem, you can list `license` under `dynamic` or alternatively
-        remove the `[project]` table from your file and rely entirely on other means of
-        configuration.
-        ********************************************************************************
-
-!!
-  _handle_missing_dynamic(dist, project_table)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:75: _MissingDynamic: `authors` defined outside of `pyproject.toml` is ignored.
-!!
-
-        ********************************************************************************
-        The following seems to be defined outside of `pyproject.toml`:
-
-        `authors = 'Hello Robot Inc.'`
-
-        According to the spec (see the link below), however, setuptools CANNOT
-        consider this value unless `authors` is listed as `dynamic`.
-
-        https://packaging.python.org/en/latest/specifications/pyproject-toml/#declaring-project-metadata-the-project-table
-
-        To prevent this problem, you can list `authors` under `dynamic` or alternatively
-        remove the `[project]` table from your file and rely entirely on other means of
-        configuration.
-        ********************************************************************************
-
-!!
-  _handle_missing_dynamic(dist, project_table)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:75: _MissingDynamic: `scripts` defined outside of `pyproject.toml` is ignored.
-!!
-
-        ********************************************************************************
-        The following seems to be defined outside of `pyproject.toml`:
-
-        `scripts = ['funmap = stretch_funmap.funmap:main']`
-
-        According to the spec (see the link below), however, setuptools CANNOT
-        consider this value unless `scripts` is listed as `dynamic`.
-
-        https://packaging.python.org/en/latest/specifications/pyproject-toml/#declaring-project-metadata-the-project-table
-
-        To prevent this problem, you can list `scripts` under `dynamic` or alternatively
-        remove the `[project]` table from your file and rely entirely on other means of
-        configuration.
-        ********************************************************************************
-
-!!
-  _handle_missing_dynamic(dist, project_table)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsWarning: `install_requires` overwritten in `pyproject.toml` (dependencies)
-  corresp(dist, value, root_dir)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsWarning: `license` overwritten by `pyproject.toml`
-  corresp(dist, value, root_dir)
---- stderr: stretch_funmap                                                                                                                       
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/colcon_core/executor/__init__.py", line 91, in __call__
-    rc = await self.task(*args, **kwargs)
-  File "/usr/lib/python3/dist-packages/colcon_core/task/__init__.py", line 93, in __call__
-    return await task_method(*args, **kwargs)
-  File "/usr/lib/python3/dist-packages/colcon_ros/task/ament_python/build.py", line 51, in build
-    setup_py_data = get_setup_data(self.context.pkg, env)
-  File "/usr/lib/python3/dist-packages/colcon_core/task/python/__init__.py", line 20, in get_setup_data
-    return dict(pkg.metadata[key](env))
-  File "/usr/lib/python3/dist-packages/colcon_ros/package_augmentation/ros_ament_python.py", line 57, in getter
-    return get_setup_information(
-  File "/usr/lib/python3/dist-packages/colcon_python_setup_py/package_identification/python_setup_py.py", line 249, in get_setup_information
-    _setup_information_cache[hashable_env] = _get_setup_information(
-  File "/usr/lib/python3/dist-packages/colcon_python_setup_py/package_identification/python_setup_py.py", line 301, in _get_setup_information
-    return ast.literal_eval(output)
-  File "/usr/lib/python3.10/ast.py", line 64, in literal_eval
-    node_or_string = parse(node_or_string.lstrip(" \t"), mode='eval')
-  File "/usr/lib/python3.10/ast.py", line 50, in parse
-    return compile(source, filename, mode, flags,
-  File "<unknown>", line 1
-    {'package_data': {}, 'dist_files': [], 'include_package_data': True, 'exclude_package_data': None, 'src_root': None, 'dependency_links': [], 'setup_requires': [], 'message_extractors': None, 'eager_resources': None, 'entry_points': {}, 'extras_require': {}, 'install_requires': ['cma>=4.0.0', 'cython>=3.0.11', 'matplotlib>=3.10.0', 'numba>=0.60.0', 'numpy==1.23.2', 'opencv-python>=4.7.0.72', 'pyquaternion>=0.9.9', 'pyyaml>=6.0.2', 'scikit-image>=0.24.0', 'scipy>=1.13.1', 'transforms3d>=0.4.2'], 'namespace_packages': None, 'packages': ['stretch_funmap'], 'python_requires': <SpecifierSet('>=3.10')>, 'use_2to3': None, 'zip_safe': None, 'cffi_modules': None, 'use_scm_version': None, 'use_incremental': None, 'verbose': True, 'dry_run': False, 'help': False, 'command_packages': None, 'script_name': 'setup.py', 'script_args': ['--dry-run'], 'command_options': {'develop': {'script_dir': ('setup.cfg', '$base/lib/stretch_funmap')}, 'install': {'install_scripts': ('setup.cfg', '$base/lib/stretch_funmap')}}, 'package_dir': {}, 'py_modules': [], 'libraries': None, 'headers': None, 'ext_package': None, 'include_dirs': None, 'extra_path': None, 'scripts': None, 'data_files': [('share/ament_index/resource_index/packages', ['resource/stretch_funmap']), ('share/stretch_funmap', ['package.xml']), ('share/stretch_funmap/launch', ['launch/funmap.launch.py', 'launch/mapping.launch.py']), ('share/stretch_funmap/rviz', ['rviz/stretch_mapping.rviz'])], 'password': '', 'command_obj': {}, 'have_run': {}, 'want_user_cfg': True, 'metadata': {'name': 'stretch-funmap', 'version': '0.1.0', 'author': 'Hello Robot Inc.', 'author_email': 'support@hello-robot.com', 'maintainer': None, 'maintainer_email': None, 'url': 'https://github.com/hello-robot/stretch_ros2', 'license': None, 'description': '', 'long_description': '![](../images/banner.png)\n\n## Overview\n\n*stretch_funmap* is an implementation of Fast Unified Navigation, Manipulation And Planning (FUNMAP). FUNMAP provides navigation, manipulation, and planning capabilities for the Stretch mobile manipulator. *stretch_funmap* includes examples of efficient ways to take advantage of the Stretch\'s unique properties. \n\nPrevious commercially-available mobile manipulators have consisted of a serial manipulator (i.e., links connected by rotary joints) placed on a mobile base [1]. Widely used software (e.g., the Robot Operating System (ROS)) [1] typically expects a velocity-controlled mobile base that can be held still while the arm manipulates [3, 4]. \n\nIn contrast, the Stretch\'s mobile base is integral to manipulation and typically moves throughout a task. It can also perform high-fidelity position control with its mobile base. FUNMAP uses approximate geometric models and computer-vision algorithms to efficiently find plans that take advantage of its prismatic joints (e.g., telescoping arm) and Cartesian structure. In contrast to typical approaches that treat navigation (e.g., ROS Navigation Stack ) and manipulation (e.g., MoveIt! [5, 6]) separately, FUNMAP does both. \n\n## Getting Started Demo\n\nFirst, make sure that your Stretch has clearance to rotate in place and will rotate without straining any cables connected to the trunk. Ideally, you should have the robot untethered.\n\nNext, run the following launch file:\n\n```\nros2 launch stretch_funmap mapping.launch.py\n```\n\nIn another terminal, run the keyboard teleoperation node:\n```\nros2 run stretch_core keyboard_teleop --ros-args -p mapping_on:=True\n```\n\nNow, you will take a head scan, which will involve the head panning around, the base rotating, and the head panning around again to overcome the blindspot due to the mast.\n\n```\nWhile in the terminal in which you started the `keyboard_teleop` node, press the space bar to initiate the head scan.\n```\n\nAt this point, you should see a 3D map resulting from the head scan in RViz. You can rotate it around and look at it. It has been created by merging many 3D scans.\n\nIf you have the robot untethered, you can now specify a navigation goal for the robot. If the robot finds a navigation plan to the goal, it will attempt to navigate to it. While navigating, it will look down with its 3D camera in an attempt to stop if it detects an obstacle.\n\n```\nIn RViz, press the "2D Nav Goal" button on the top bar with a magenta arrow icon.\nSpecify a nearby navigation goal pose on the floor of the map by clicking and drawing a magenta arrow.\n```\nFor this to work, the navigation goal must be in a place that the robot can reach and that the robot has scanned well. For example, the robot will only navigate across floor regions that it has in its map.\n\nIf the robot finds a path, you should see green lines connecting white spheres in RViz that display its plan as it attempts to navigate to the goal.\n\nOnce the robot has reached the goal, you can take another head scan.\n\n```\nWhile in the terminal, press the space bar to initiate another head scan.\n```\n\nThe robot should take the head scan and merge it with the previous scans. If all goes well, the merged 3D map will be visible in RViz.\n\nYou can also have the robot automatically drive to a place that it thinks is a good place for it to take a head scan in order to map the environment.\n\n\n```\nWhile in the terminal, press the key with \\ and | on it. \nThis should work even if caps lock is enabled or the shift key is pressed. \n```\n\nIf the robot reached it\'s goal, then you can now take another head scan. \n\n\n```\nWhile in the terminal, press the space bar to initiate another head scan.\n```\n\nBy repeating this process, you can create a 3D map of the environment. FUNMAP uses images to represent the environment with each pixel value representing the highest observed 3D point at a planar location. By default, all of the merged maps are saved to the following directory:\n\n\n```\n./stretch_user/debug/merged_maps/\n\n```\n\nYou can see the image representations by looking at files with the following naming pattern: \n\n\n```\n./stretch_user/debug/merged_maps/merged_map_DATETIME_mhi_visualization.png\n```\n\nYou can also click on a reaching goal for the Stretch by clicking on "Publish Point" in Rviz and then selecting a 3D point on the map. FUNMAP will attempt to generate a navigation and manipulation plan to reach close to the selected 3D location with Stretch\'s gripper.\n\n\n```\nIn RViz, select a reach goal by clicking on "Publish Point" on the top bar with a red map location icon). \nThen, click on a 3D location on the map to specify a reaching target for the robot\'s gripper.\n```\n\nThat concludes the demonstration. Have fun with FUNMAP!\n\n\n## More FUNMAP\n\n![](./images/living_room_map_image.png)\n![](./images/living_room_map.png)\n![](./images/living_room_map_perspective.png)\n\nFUNMAP represents human environments with Max Height Images (MHIs). An MHI is an image for which each pixel typically represents the height of the robot’s environment. Given a volume of interest (VOI) with its z-axis aligned with gravity, an MHI, I, maps locations to heights. Specifically, I(x,y)=z, where (x,y) represents a discretized planar location within the VOI and z represents the discretized height of the maximum occupied voxel within the VOI at that planar location (see Figure 1 above). \n\nThe placement of the Stretch 3D camera at a human head height enables it to capture MHIs that represent the horizontal surfaces with which humans frequently interact, such as table tops, countertops, and chairs. The orientation of its 3D camera enables the robot to quickly scan an environment to create a room-scale MHI by panning its head at a constant tilt angle. \n\nIn contrast to other environment representations, such as point clouds and 3D mesh models, MHIs support fast, efficient operations through optimized image processing and are compatible with deep learning methods for images. Related representations have primarily been used for navigation, including for legged robots on rough terrain, but have not emphasized elevated surfaces in human environments nor incorporated manipulation [7, 8]. Object grasping systems for bin picking have used related representations, but have only considered small areas with objects and not incorporated navigation [9, 10]. \n\nDuring development, we have used FUNMAP to create MHIs for which each pixel represents a 6mm x 6mm region of the environment’s floor and has a height resolution of less than 6mm per unit. This allows a single 2000 x 2000 pixel, 8-bit image to represent a 12m x 12m environment from 10cm below the estimated floor plane to 1.2m above the floor plane, which captures the great majority of open horizontal surfaces in human environments with which people interact. MHIs also have the potential to represent enclosed surfaces (e.g., surfaces in shelves and cabinets) and vertical surfaces (e.g., doors) by defining new VOIs with different orientations and heights, which is a capability that merits future exploration.\n\nFor navigation and planning, FUNMAP uses fast distance transforms and morphological operators to efficiently create cost functions for robust optimization-based planning. For example, a high value of a distance transform at a floor location implies that the mobile base will be farther from obstacles. Similarly, a high value of a distance transform for a location on an elevated surface implies that the robot’s end effector will be farther from obstacles. \n\n![](./images/reach_plan_1.png)\n![](./images/reach_plan_2.png)\n\nFigure 3: Left: The cyan lines represent achievable driving goals on the floor from which the robot can reach the target (red circle) on the table (dark blue). Right: When the target (red circle) is farther back near obstacles on the table (dark blue), the robot can reach the target from fewer locations (cyan lines). \n\n![](./images/navigation_1.png)\n![](./images/reach_1.png)\n\nFigure 4: Left: Example of a piecewise linear navigation plan (green line segments and white spheres) being executed. Right: Example of a successfully executed plan to reach a target location on a table (light blue) while avoiding a wall with shelves (dark blue and purple).\n\nThe Stretch’s slender links and Cartesian kinematics support rapid optimization of plans due to the simplified geometry of the robot’s motions. FUNMAP uses piecewise linear paths on the cost image for fast navigation and manipulation planning. \n\nFUNMAP enables the Stretch to reach a 3D target position. FUNMAP models the linear motion of the telescoping arm as it extends to reach a target as a line in a manipulation cost image (see Figure 2). FUNMAP uses a navigation cost image and Djikstra’s algorithm with a priority queue to efficiently estimate the cost of navigating to all floor locations (see Figure 3 left). FUNMAP then combines these results to find a minimum cost plan that increases the distance to obstacles and the manipulable workspace of the robot (see Figure 3 right). \n\n\n## References\n\n[1] Bostelman, Roger, Tsai Hong, and Jeremy Marvel. "Survey of research for performance measurement of mobile manipulators." Journal of Research of the National Institute of Standards and Technology 121, no. 3 (2016): 342-366.\n\n[2] Quigley, Morgan, Ken Conley, Brian Gerkey, Josh Faust, Tully Foote, Jeremy Leibs, Rob Wheeler, and Andrew Y. Ng. "ROS: an open-source Robot Operating System." In ICRA workshop on open source software, vol. 3, no. 3.2, p. 5. 2009.\n\n[3] Sachin Chitta, Eitan Marder-Eppstein, Wim Meeussen, Vijay Pradeep, Adolfo Rodríguez Tsouroukdissian, et al.. ros_control: A generic and simple control framework for ROS. The Journal of Open Source Software, 2017, 2 (20), pp.456 - 456.\n\n[4] Guimarães, Rodrigo Longhi, André Schneider de Oliveira, João Alberto Fabro, Thiago Becker, and Vinícius Amilgar Brenner. "ROS navigation: Concepts and tutorial." In Robot Operating System (ROS), pp. 121-160. Springer, Cham, 2016.\n\n[5] Chitta, Sachin, Ioan Sucan, and Steve Cousins. "Moveit! [ros topics]." IEEE Robotics & Automation Magazine 19, no. 1 (2012): 18-19.\n\n[6] Chitta, Sachin. "MoveIt!: an introduction." In Robot Operating System (ROS), pp. 3-27. Springer, Cham, 2016.\n\n[7] Fankhauser, Péter, and Marco Hutter. "A universal grid map library: Implementation and use case for rough terrain navigation." In Robot Operating System (ROS), pp. 99-120. Springer, Cham, 2016.\n\n[8] Lu, David V., Dave Hershberger, and William D. Smart. "Layered costmaps for context-sensitive navigation." In 2014 IEEE/RSJ International Conference on Intelligent Robots and Systems, pp. 709-715. IEEE, 2014.\n\n[9] Zeng, Andy, Shuran Song, Johnny Lee, Alberto Rodriguez, and Thomas Funkhouser. "Tossingbot: Learning to throw arbitrary objects with residual physics." arXiv preprint arXiv:1903.11239 (2019).\n\n[10] Zeng, Andy, Shuran Song, Kuan-Ting Yu, Elliott Donlon, Francois R. Hogan, Maria Bauza, Daolin Ma et al. "Robotic pick-and-place of novel objects in clutter with multi-affordance grasping and cross-domain image matching." In 2018 IEEE international conference on robotics and automation (ICRA), pp. 1-8. IEEE, 2018.\n\n\n## License\n\nFor license information, please see the LICENSE files. \n', 'keywords': None, 'platforms': None, 'classifiers': None, 'download_url': None, 'provides': None, 'requires': None, 'obsoletes': None, 'long_description_content_type': 'text/markdown', 'project_urls': {}, 'license_expression': '', 'license_file': None, 'install_requires': ['cma>=4.0.0', 'cython>=3.0.11', 'matplotlib>=3.10.0', 'numba>=0.60.0', 'numpy==1.23.2', 'opencv-python>=4.7.0.72', 'pyquaternion>=0.9.9', 'pyyaml>=6.0.2', 'scikit-image>=0.24.0', 'scipy>=1.13.1', 'transforms3d>=0.4.2'], 'extras_require': {}, 'python_requires': <SpecifierSet('>=3.10')>}}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ^
-SyntaxError: invalid syntax
+- joint_gripper_finger_left
+position:
+- 0.0
+- 0.0
+- 0.6172216465628723
+- 3.890684327146503e-06
+- 3.890684327146503e-06
+- 3.890684327146503e-06
+- 3.890684327146503e-06
+- 0.005752427954571154
+- 0.09023612385371113
+- -1.0957223349494476
+- -0.015339807878856412
+- -0.0015339807878856412
+- 0.16583569659787628
+- 0.16583569659787628
+velocity:
+- 0.0
+- 0.0
+- -0.0002664721998660841
+- 2.5612546068157148e-05
+- 2.5612546068157148e-05
+- 2.5612546068157148e-05
+- 2.5612546068157148e-05
+- -0.0
+- -0.0
+- -0.0
+- -0.0
+- 0.0
+- 0.0
+- 0.0
+effort:
+- 0.0
+- 0.0
+- 34.42453421798407
+- -0.24556050113603176
+- -0.24556050113603176
+- -0.24556050113603176
+- -0.24556050113603176
+- 5.37109375
+- -3.61328125
+- 1.07421875
+- -2.833414753297509
+- 0.0
+- -9.9609375
+- -9.9609375
 ---
-Failed   <<< stretch_funmap [1.55s, exited with code 1]
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require' 1.7s] ...
-  warnings.warn(msg)
-Aborted  <<< hello_helpers [1.81s]                                                                                                                          
-Aborted  <<< stretch_deep_perception [1.79s]
-Aborted  <<< stretch_demos [1.79s]
-Aborted  <<< stretch_ros_tutorials [1.78s]
-Aborted  <<< tf2_web_republisher [1.77s]
-Aborted  <<< stretch_rtabmap [1.77s]
-Aborted  <<< stretch_nav2 [1.78s]
-Aborted  <<< sllidar_ros2 [1.80s]
-Aborted  <<< rosbridge_test_msgs [1.82s]
-Aborted  <<< rosapi_msgs [1.82s]
-Aborted  <<< audio_common_msgs [1.83s]
-Aborted  <<< speech_recognition_msgs [1.80s]
-Aborted  <<< ros2_numpy [1.81s]
-Aborted  <<< realsense2_camera_msgs [1.83s]
-Aborted  <<< rosbridge_msgs [1.81s]
 
-Summary: 0 packages finished [1.98s]
-  1 package failed: stretch_funmap
-  15 packages aborted: audio_common_msgs hello_helpers realsense2_camera_msgs ros2_numpy rosapi_msgs rosbridge_msgs rosbridge_test_msgs sllidar_ros2 speech_recognition_msgs stretch_deep_perception stretch_demos stretch_nav2 stretch_ros_tutorials stretch_rtabmap tf2_web_republisher
-  8 packages had stderr output: audio_common_msgs realsense2_camera_msgs ros2_numpy rosapi_msgs rosbridge_msgs rosbridge_test_msgs speech_recognition_msgs stretch_funmap
-  18 packages not processed
-invalid syntax (<unknown>, line 1)
-hello-robot@stretch-se3-3103:~/ament_ws$ colcon build --symlink-install
-Starting >>> audio_common_msgs
-Starting >>> realsense2_camera_msgs
-Starting >>> rosbridge_test_msgs
-Starting >>> rosapi_msgs
-Starting >>> hello_helpers
-Starting >>> rosbridge_msgs
-Starting >>> ros2_numpy
-Starting >>> speech_recognition_msgs
-Starting >>> sllidar_ros2
-Starting >>> stretch_deep_perception
-Starting >>> stretch_demos
-Starting >>> stretch_funmap
-Starting >>> stretch_nav2
-Starting >>> stretch_ros_tutorials
-Starting >>> stretch_rtabmap
-Starting >>> tf2_web_republisher
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
-  warnings.warn(msg)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
-  warnings.warn(msg)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
-  warnings.warn(msg)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require'
-  warnings.warn(msg)
-[03/03/26 15:20:13] WARNING  toml section missing PosixPath('pyproject.toml') does not contain a tool.setuptools_scm section            pyproject_reading.py:215
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:75: _MissingDynamic: `license` defined outside of `pyproject.toml` is ignored.
-!!
 
-        ********************************************************************************
-        The following seems to be defined outside of `pyproject.toml`:
+3. ros2 action send_goal /stretch_controller/follow_joint_trajectory \
+control_msgs/action/FollowJointTrajectory \
+"{trajectory: {joint_names: ['joint_wrist_yaw', 'joint_wrist_pitch', 'joint_wrist_roll'], points: [{positions: [0.0, 0.0, 0.0], time_from_start: {sec: 2}}]}}"
+do the above in code for the gripper 
 
-        `license = 'Apache License 2.0'`
+4. expand the gripper to be max opened
+5. go to this goal positioning:
 
-        According to the spec (see the link below), however, setuptools CANNOT
-        consider this value unless `license` is listed as `dynamic`.
-
-        https://packaging.python.org/en/latest/specifications/pyproject-toml/#declaring-project-metadata-the-project-table
-
-        To prevent this problem, you can list `license` under `dynamic` or alternatively
-        remove the `[project]` table from your file and rely entirely on other means of
-        configuration.
-        ********************************************************************************
-
-!!
-  _handle_missing_dynamic(dist, project_table)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:75: _MissingDynamic: `authors` defined outside of `pyproject.toml` is ignored.
-!!
-
-        ********************************************************************************
-        The following seems to be defined outside of `pyproject.toml`:
-
-        `authors = 'Hello Robot Inc.'`
-
-        According to the spec (see the link below), however, setuptools CANNOT
-        consider this value unless `authors` is listed as `dynamic`.
-
-        https://packaging.python.org/en/latest/specifications/pyproject-toml/#declaring-project-metadata-the-project-table
-
-        To prevent this problem, you can list `authors` under `dynamic` or alternatively
-        remove the `[project]` table from your file and rely entirely on other means of
-        configuration.
-        ********************************************************************************
-
-!!
-  _handle_missing_dynamic(dist, project_table)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:75: _MissingDynamic: `scripts` defined outside of `pyproject.toml` is ignored.
-!!
-
-        ********************************************************************************
-        The following seems to be defined outside of `pyproject.toml`:
-
-        `scripts = ['funmap = stretch_funmap.funmap:main']`
-
-        According to the spec (see the link below), however, setuptools CANNOT
-        consider this value unless `scripts` is listed as `dynamic`.
-
-        https://packaging.python.org/en/latest/specifications/pyproject-toml/#declaring-project-metadata-the-project-table
-
-        To prevent this problem, you can list `scripts` under `dynamic` or alternatively
-        remove the `[project]` table from your file and rely entirely on other means of
-        configuration.
-        ********************************************************************************
-
-!!
-  _handle_missing_dynamic(dist, project_table)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsWarning: `install_requires` overwritten in `pyproject.toml` (dependencies)
-  corresp(dist, value, root_dir)
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/config/_apply_pyprojecttoml.py:82: SetuptoolsWarning: `license` overwritten by `pyproject.toml`
-  corresp(dist, value, root_dir)
---- stderr: stretch_funmap                                                                                                                       
-Traceback (most recent call last):
-  File "/usr/lib/python3/dist-packages/colcon_core/executor/__init__.py", line 91, in __call__
-    rc = await self.task(*args, **kwargs)
-  File "/usr/lib/python3/dist-packages/colcon_core/task/__init__.py", line 93, in __call__
-    return await task_method(*args, **kwargs)
-  File "/usr/lib/python3/dist-packages/colcon_ros/task/ament_python/build.py", line 51, in build
-    setup_py_data = get_setup_data(self.context.pkg, env)
-  File "/usr/lib/python3/dist-packages/colcon_core/task/python/__init__.py", line 20, in get_setup_data
-    return dict(pkg.metadata[key](env))
-  File "/usr/lib/python3/dist-packages/colcon_ros/package_augmentation/ros_ament_python.py", line 57, in getter
-    return get_setup_information(
-  File "/usr/lib/python3/dist-packages/colcon_python_setup_py/package_identification/python_setup_py.py", line 249, in get_setup_information
-    _setup_information_cache[hashable_env] = _get_setup_information(
-  File "/usr/lib/python3/dist-packages/colcon_python_setup_py/package_identification/python_setup_py.py", line 301, in _get_setup_information
-    return ast.literal_eval(output)
-  File "/usr/lib/python3.10/ast.py", line 64, in literal_eval
-    node_or_string = parse(node_or_string.lstrip(" \t"), mode='eval')
-  File "/usr/lib/python3.10/ast.py", line 50, in parse
-    return compile(source, filename, mode, flags,
-  File "<unknown>", line 1
-    {'package_data': {}, 'dist_files': [], 'include_package_data': True, 'exclude_package_data': None, 'src_root': None, 'dependency_links': [], 'setup_requires': [], 'message_extractors': None, 'eager_resources': None, 'entry_points': {}, 'extras_require': {}, 'install_requires': ['cma>=4.0.0', 'cython>=3.0.11', 'matplotlib>=3.10.0', 'numba>=0.60.0', 'numpy==1.23.2', 'opencv-python>=4.7.0.72', 'pyquaternion>=0.9.9', 'pyyaml>=6.0.2', 'scikit-image>=0.24.0', 'scipy>=1.13.1', 'transforms3d>=0.4.2'], 'namespace_packages': None, 'packages': ['stretch_funmap'], 'python_requires': <SpecifierSet('>=3.10')>, 'use_2to3': None, 'zip_safe': None, 'cffi_modules': None, 'use_scm_version': None, 'use_incremental': None, 'verbose': True, 'dry_run': False, 'help': False, 'command_packages': None, 'script_name': 'setup.py', 'script_args': ['--dry-run'], 'command_options': {'develop': {'script_dir': ('setup.cfg', '$base/lib/stretch_funmap')}, 'install': {'install_scripts': ('setup.cfg', '$base/lib/stretch_funmap')}}, 'package_dir': {}, 'py_modules': [], 'libraries': None, 'headers': None, 'ext_package': None, 'include_dirs': None, 'extra_path': None, 'scripts': None, 'data_files': [('share/ament_index/resource_index/packages', ['resource/stretch_funmap']), ('share/stretch_funmap', ['package.xml']), ('share/stretch_funmap/launch', ['launch/funmap.launch.py', 'launch/mapping.launch.py']), ('share/stretch_funmap/rviz', ['rviz/stretch_mapping.rviz'])], 'password': '', 'command_obj': {}, 'have_run': {}, 'want_user_cfg': True, 'metadata': {'name': 'stretch-funmap', 'version': '0.1.0', 'author': 'Hello Robot Inc.', 'author_email': 'support@hello-robot.com', 'maintainer': None, 'maintainer_email': None, 'url': 'https://github.com/hello-robot/stretch_ros2', 'license': None, 'description': '', 'long_description': '![](../images/banner.png)\n\n## Overview\n\n*stretch_funmap* is an implementation of Fast Unified Navigation, Manipulation And Planning (FUNMAP). FUNMAP provides navigation, manipulation, and planning capabilities for the Stretch mobile manipulator. *stretch_funmap* includes examples of efficient ways to take advantage of the Stretch\'s unique properties. \n\nPrevious commercially-available mobile manipulators have consisted of a serial manipulator (i.e., links connected by rotary joints) placed on a mobile base [1]. Widely used software (e.g., the Robot Operating System (ROS)) [1] typically expects a velocity-controlled mobile base that can be held still while the arm manipulates [3, 4]. \n\nIn contrast, the Stretch\'s mobile base is integral to manipulation and typically moves throughout a task. It can also perform high-fidelity position control with its mobile base. FUNMAP uses approximate geometric models and computer-vision algorithms to efficiently find plans that take advantage of its prismatic joints (e.g., telescoping arm) and Cartesian structure. In contrast to typical approaches that treat navigation (e.g., ROS Navigation Stack ) and manipulation (e.g., MoveIt! [5, 6]) separately, FUNMAP does both. \n\n## Getting Started Demo\n\nFirst, make sure that your Stretch has clearance to rotate in place and will rotate without straining any cables connected to the trunk. Ideally, you should have the robot untethered.\n\nNext, run the following launch file:\n\n```\nros2 launch stretch_funmap mapping.launch.py\n```\n\nIn another terminal, run the keyboard teleoperation node:\n```\nros2 run stretch_core keyboard_teleop --ros-args -p mapping_on:=True\n```\n\nNow, you will take a head scan, which will involve the head panning around, the base rotating, and the head panning around again to overcome the blindspot due to the mast.\n\n```\nWhile in the terminal in which you started the `keyboard_teleop` node, press the space bar to initiate the head scan.\n```\n\nAt this point, you should see a 3D map resulting from the head scan in RViz. You can rotate it around and look at it. It has been created by merging many 3D scans.\n\nIf you have the robot untethered, you can now specify a navigation goal for the robot. If the robot finds a navigation plan to the goal, it will attempt to navigate to it. While navigating, it will look down with its 3D camera in an attempt to stop if it detects an obstacle.\n\n```\nIn RViz, press the "2D Nav Goal" button on the top bar with a magenta arrow icon.\nSpecify a nearby navigation goal pose on the floor of the map by clicking and drawing a magenta arrow.\n```\nFor this to work, the navigation goal must be in a place that the robot can reach and that the robot has scanned well. For example, the robot will only navigate across floor regions that it has in its map.\n\nIf the robot finds a path, you should see green lines connecting white spheres in RViz that display its plan as it attempts to navigate to the goal.\n\nOnce the robot has reached the goal, you can take another head scan.\n\n```\nWhile in the terminal, press the space bar to initiate another head scan.\n```\n\nThe robot should take the head scan and merge it with the previous scans. If all goes well, the merged 3D map will be visible in RViz.\n\nYou can also have the robot automatically drive to a place that it thinks is a good place for it to take a head scan in order to map the environment.\n\n\n```\nWhile in the terminal, press the key with \\ and | on it. \nThis should work even if caps lock is enabled or the shift key is pressed. \n```\n\nIf the robot reached it\'s goal, then you can now take another head scan. \n\n\n```\nWhile in the terminal, press the space bar to initiate another head scan.\n```\n\nBy repeating this process, you can create a 3D map of the environment. FUNMAP uses images to represent the environment with each pixel value representing the highest observed 3D point at a planar location. By default, all of the merged maps are saved to the following directory:\n\n\n```\n./stretch_user/debug/merged_maps/\n\n```\n\nYou can see the image representations by looking at files with the following naming pattern: \n\n\n```\n./stretch_user/debug/merged_maps/merged_map_DATETIME_mhi_visualization.png\n```\n\nYou can also click on a reaching goal for the Stretch by clicking on "Publish Point" in Rviz and then selecting a 3D point on the map. FUNMAP will attempt to generate a navigation and manipulation plan to reach close to the selected 3D location with Stretch\'s gripper.\n\n\n```\nIn RViz, select a reach goal by clicking on "Publish Point" on the top bar with a red map location icon). \nThen, click on a 3D location on the map to specify a reaching target for the robot\'s gripper.\n```\n\nThat concludes the demonstration. Have fun with FUNMAP!\n\n\n## More FUNMAP\n\n![](./images/living_room_map_image.png)\n![](./images/living_room_map.png)\n![](./images/living_room_map_perspective.png)\n\nFUNMAP represents human environments with Max Height Images (MHIs). An MHI is an image for which each pixel typically represents the height of the robot’s environment. Given a volume of interest (VOI) with its z-axis aligned with gravity, an MHI, I, maps locations to heights. Specifically, I(x,y)=z, where (x,y) represents a discretized planar location within the VOI and z represents the discretized height of the maximum occupied voxel within the VOI at that planar location (see Figure 1 above). \n\nThe placement of the Stretch 3D camera at a human head height enables it to capture MHIs that represent the horizontal surfaces with which humans frequently interact, such as table tops, countertops, and chairs. The orientation of its 3D camera enables the robot to quickly scan an environment to create a room-scale MHI by panning its head at a constant tilt angle. \n\nIn contrast to other environment representations, such as point clouds and 3D mesh models, MHIs support fast, efficient operations through optimized image processing and are compatible with deep learning methods for images. Related representations have primarily been used for navigation, including for legged robots on rough terrain, but have not emphasized elevated surfaces in human environments nor incorporated manipulation [7, 8]. Object grasping systems for bin picking have used related representations, but have only considered small areas with objects and not incorporated navigation [9, 10]. \n\nDuring development, we have used FUNMAP to create MHIs for which each pixel represents a 6mm x 6mm region of the environment’s floor and has a height resolution of less than 6mm per unit. This allows a single 2000 x 2000 pixel, 8-bit image to represent a 12m x 12m environment from 10cm below the estimated floor plane to 1.2m above the floor plane, which captures the great majority of open horizontal surfaces in human environments with which people interact. MHIs also have the potential to represent enclosed surfaces (e.g., surfaces in shelves and cabinets) and vertical surfaces (e.g., doors) by defining new VOIs with different orientations and heights, which is a capability that merits future exploration.\n\nFor navigation and planning, FUNMAP uses fast distance transforms and morphological operators to efficiently create cost functions for robust optimization-based planning. For example, a high value of a distance transform at a floor location implies that the mobile base will be farther from obstacles. Similarly, a high value of a distance transform for a location on an elevated surface implies that the robot’s end effector will be farther from obstacles. \n\n![](./images/reach_plan_1.png)\n![](./images/reach_plan_2.png)\n\nFigure 3: Left: The cyan lines represent achievable driving goals on the floor from which the robot can reach the target (red circle) on the table (dark blue). Right: When the target (red circle) is farther back near obstacles on the table (dark blue), the robot can reach the target from fewer locations (cyan lines). \n\n![](./images/navigation_1.png)\n![](./images/reach_1.png)\n\nFigure 4: Left: Example of a piecewise linear navigation plan (green line segments and white spheres) being executed. Right: Example of a successfully executed plan to reach a target location on a table (light blue) while avoiding a wall with shelves (dark blue and purple).\n\nThe Stretch’s slender links and Cartesian kinematics support rapid optimization of plans due to the simplified geometry of the robot’s motions. FUNMAP uses piecewise linear paths on the cost image for fast navigation and manipulation planning. \n\nFUNMAP enables the Stretch to reach a 3D target position. FUNMAP models the linear motion of the telescoping arm as it extends to reach a target as a line in a manipulation cost image (see Figure 2). FUNMAP uses a navigation cost image and Djikstra’s algorithm with a priority queue to efficiently estimate the cost of navigating to all floor locations (see Figure 3 left). FUNMAP then combines these results to find a minimum cost plan that increases the distance to obstacles and the manipulable workspace of the robot (see Figure 3 right). \n\n\n## References\n\n[1] Bostelman, Roger, Tsai Hong, and Jeremy Marvel. "Survey of research for performance measurement of mobile manipulators." Journal of Research of the National Institute of Standards and Technology 121, no. 3 (2016): 342-366.\n\n[2] Quigley, Morgan, Ken Conley, Brian Gerkey, Josh Faust, Tully Foote, Jeremy Leibs, Rob Wheeler, and Andrew Y. Ng. "ROS: an open-source Robot Operating System." In ICRA workshop on open source software, vol. 3, no. 3.2, p. 5. 2009.\n\n[3] Sachin Chitta, Eitan Marder-Eppstein, Wim Meeussen, Vijay Pradeep, Adolfo Rodríguez Tsouroukdissian, et al.. ros_control: A generic and simple control framework for ROS. The Journal of Open Source Software, 2017, 2 (20), pp.456 - 456.\n\n[4] Guimarães, Rodrigo Longhi, André Schneider de Oliveira, João Alberto Fabro, Thiago Becker, and Vinícius Amilgar Brenner. "ROS navigation: Concepts and tutorial." In Robot Operating System (ROS), pp. 121-160. Springer, Cham, 2016.\n\n[5] Chitta, Sachin, Ioan Sucan, and Steve Cousins. "Moveit! [ros topics]." IEEE Robotics & Automation Magazine 19, no. 1 (2012): 18-19.\n\n[6] Chitta, Sachin. "MoveIt!: an introduction." In Robot Operating System (ROS), pp. 3-27. Springer, Cham, 2016.\n\n[7] Fankhauser, Péter, and Marco Hutter. "A universal grid map library: Implementation and use case for rough terrain navigation." In Robot Operating System (ROS), pp. 99-120. Springer, Cham, 2016.\n\n[8] Lu, David V., Dave Hershberger, and William D. Smart. "Layered costmaps for context-sensitive navigation." In 2014 IEEE/RSJ International Conference on Intelligent Robots and Systems, pp. 709-715. IEEE, 2014.\n\n[9] Zeng, Andy, Shuran Song, Johnny Lee, Alberto Rodriguez, and Thomas Funkhouser. "Tossingbot: Learning to throw arbitrary objects with residual physics." arXiv preprint arXiv:1903.11239 (2019).\n\n[10] Zeng, Andy, Shuran Song, Kuan-Ting Yu, Elliott Donlon, Francois R. Hogan, Maria Bauza, Daolin Ma et al. "Robotic pick-and-place of novel objects in clutter with multi-affordance grasping and cross-domain image matching." In 2018 IEEE international conference on robotics and automation (ICRA), pp. 1-8. IEEE, 2018.\n\n\n## License\n\nFor license information, please see the LICENSE files. \n', 'keywords': None, 'platforms': None, 'classifiers': None, 'download_url': None, 'provides': None, 'requires': None, 'obsoletes': None, 'long_description_content_type': 'text/markdown', 'project_urls': {}, 'license_expression': '', 'license_file': None, 'install_requires': ['cma>=4.0.0', 'cython>=3.0.11', 'matplotlib>=3.10.0', 'numba>=0.60.0', 'numpy==1.23.2', 'opencv-python>=4.7.0.72', 'pyquaternion>=0.9.9', 'pyyaml>=6.0.2', 'scikit-image>=0.24.0', 'scipy>=1.13.1', 'transforms3d>=0.4.2'], 'extras_require': {}, 'python_requires': <SpecifierSet('>=3.10')>}}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ^
-SyntaxError: invalid syntax
+hello-robot@stretch-se3-3103:~/voice-visual-api$ ros2 topic echo /joint_states --once
+header:
+  stamp:
+    sec: 1774902304
+    nanosec: 649602019
+  frame_id: ''
+name:
+- joint_right_wheel
+- joint_left_wheel
+- joint_lift
+- joint_arm_l3
+- joint_arm_l2
+- joint_arm_l1
+- joint_arm_l0
+- joint_wrist_yaw
+- joint_head_pan
+- joint_head_tilt
+- joint_wrist_pitch
+- joint_wrist_roll
+- joint_gripper_finger_right
+- joint_gripper_finger_left
+position:
+- 0.0
+- 0.0
+- 0.5139583296588484
+- 0.10284356886731755
+- 0.10284356886731755
+- 0.10284356886731755
+- 0.10284356886731755
+- 0.0006391586616190172
+- 0.09023612385371113
+- -1.0957223349494476
+- -0.013805827090970769
+- -0.0015339807878856412
+- 0.5339577172721249
+- 0.5339577172721249
+velocity:
+- 0.0
+- 0.0
+- 0.00017415018704146132
+- -2.7740261689017873e-05
+- -2.7740261689017873e-05
+- -2.7740261689017873e-05
+- -2.7740261689017873e-05
+- -0.0
+- -0.0
+- -0.0
+- -0.0
+- 0.0
+- 0.0
+- 0.0
+effort:
+- 0.0
+- 0.0
+- 34.01123346066942
+- 7.809671888164445
+- 7.809671888164445
+- 7.809671888164445
+- 7.809671888164445
+- 0.0
+- -3.61328125
+- 1.07421875
+- -2.5403028822667317
+- 0.0
+- -1.07421875
+- -1.07421875
 ---
-Failed   <<< stretch_funmap [1.67s, exited with code 1]
-/home/hello-robot/.local/lib/python3.10/site-packages/setuptools/_distutils/dist.py:289: UserWarning: Unknown distribution option: 'tests_require' 1.8s] ...
-  warnings.warn(msg)
-Aborted  <<< hello_helpers [1.95s]                                                                                                                          
-Aborted  <<< stretch_deep_perception [1.93s]
-Aborted  <<< stretch_demos [1.92s]
-Aborted  <<< stretch_ros_tutorials [1.91s]
-Aborted  <<< tf2_web_republisher [1.91s]
-Aborted  <<< stretch_rtabmap [1.91s]
-Aborted  <<< stretch_nav2 [1.92s]
-Aborted  <<< audio_common_msgs [1.97s]
-Aborted  <<< rosbridge_test_msgs [1.96s]
-Aborted  <<< sllidar_ros2 [1.93s]
-Aborted  <<< realsense2_camera_msgs [1.97s]
-Aborted  <<< rosapi_msgs [1.96s]
-Aborted  <<< rosbridge_msgs [1.95s]
-Aborted  <<< ros2_numpy [1.95s]
-Aborted  <<< speech_recognition_msgs [1.94s]
 
-Summary: 0 packages finished [2.12s]
-  1 package failed: stretch_funmap
-  15 packages aborted: audio_common_msgs hello_helpers realsense2_camera_msgs ros2_numpy rosapi_msgs rosbridge_msgs rosbridge_test_msgs sllidar_ros2 speech_recognition_msgs stretch_deep_perception stretch_demos stretch_nav2 stretch_ros_tutorials stretch_rtabmap tf2_web_republisher
-  8 packages had stderr output: audio_common_msgs realsense2_camera_msgs ros2_numpy rosapi_msgs rosbridge_msgs rosbridge_test_msgs speech_recognition_msgs stretch_funmap
-  18 packages not processed
-invalid syntax (<unknown>, line 1)
+
+6. close the gripper 
+7. move forward by 0.5 
+8. open gripper max to drop 
+9. retract to the default state inwards with the gripper inwards and the height can stay as is and also the arm must be retracted back to zero

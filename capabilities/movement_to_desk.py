@@ -9,6 +9,7 @@ import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
+from std_srvs.srv import Trigger
 
 # Speed presets: (max_vx m/s, max_wz rad/s)
 SPEED_PRESETS = {
@@ -48,7 +49,10 @@ class PrecisePath(Node):
         self.odom_topic = "/odom"
 
         self.pub = self.create_publisher(Twist, self.cmd_vel_topic, 10)
-        self.sub = self.create_subscription(Odometry, self.odom_topic, self._on_odom, 50)
+        self.sub = self.create_subscription(Odometry, self.odom_topic, self._on_odom, 5)
+
+        # Service client to reset odom via mode switch
+        self.srv_nav = self.create_client(Trigger, "/switch_to_navigation_mode")
 
         self._pose_xy: Optional[Tuple[float, float]] = None
         self._yaw: Optional[float] = None
@@ -65,17 +69,24 @@ class PrecisePath(Node):
         self.timeout_s = 30.0        # per-step timeout
 
         self.steps: List[Step] = [
-            Step("turn", math.radians(-20.0)),
-            Step("drive", 1.5),
-            Step("turn", math.radians(-15.0)),
+            Step("turn", math.radians(-39.0)),
+            Step("drive", 2.1),
+            Step("turn", math.radians(-42.0)),
         ]
 
         self.get_logger().info(f"Speed: {speed} (vx={vx}, wz={wz})")
+
+        # Reset odom by (re-)entering navigation mode so yaw starts at ~0
+        self.get_logger().info("Resetting odom via switch_to_navigation_mode...")
+        self._reset_odom()
+
         self.get_logger().info("Waiting for /odom...")
+        self._pose_xy = None
+        self._yaw = None
         while rclpy.ok() and (self._pose_xy is None or self._yaw is None):
             rclpy.spin_once(self, timeout_sec=0.1)
 
-        self.get_logger().info("Got odom. Executing steps.")
+        self.get_logger().info(f"Got odom (yaw={math.degrees(self._yaw):.1f}°). Executing steps.")
         self.run_steps()
         self.stop()
         self.get_logger().info("Done.")
@@ -86,6 +97,27 @@ class PrecisePath(Node):
         q = msg.pose.pose.orientation
         self._pose_xy = (p.x, p.y)
         self._yaw = quat_to_yaw(q.x, q.y, q.z, q.w)
+
+    def _reset_odom(self):
+        """Call switch_to_navigation_mode to reset odom to (0, 0, yaw=0)."""
+        if not self.srv_nav.wait_for_service(timeout_sec=5.0):
+            self.get_logger().warn("switch_to_navigation_mode service not available, skipping odom reset")
+            return
+        fut = self.srv_nav.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self, fut, timeout_sec=10.0)
+        if fut.done():
+            resp = fut.result()
+            self.get_logger().info(f"Odom reset: success={resp.success} msg='{resp.message}'")
+        else:
+            self.get_logger().warn("Odom reset timed out")
+        time.sleep(0.5)  # let odom republish after reset
+
+    def _drain_odom(self):
+        """Drain all pending odom messages to get the freshest reading."""
+        for _ in range(200):
+            rclpy.spin_once(self, timeout_sec=0.0)
+        # One final spin with a short wait to catch the latest publish
+        rclpy.spin_once(self, timeout_sec=0.05)
 
     def stop(self):
         self.pub.publish(Twist())
@@ -104,8 +136,10 @@ class PrecisePath(Node):
 
     def turn_relative(self, delta_yaw: float):
         assert self._yaw is not None
+        self._drain_odom()
         start = time.time()
         target = wrap_pi(self._yaw + delta_yaw)
+        self.get_logger().info(f"Turn: yaw={math.degrees(self._yaw):.1f}° target={math.degrees(target):.1f}° delta={math.degrees(delta_yaw):.1f}°")
 
         dt = 1.0 / self.rate_hz
         while rclpy.ok():
@@ -127,6 +161,7 @@ class PrecisePath(Node):
 
     def drive_forward(self, distance_m: float):
         assert self._pose_xy is not None and self._yaw is not None
+        self._drain_odom()
         start = time.time()
         x0, y0 = self._pose_xy
         target_dist = abs(distance_m)

@@ -244,7 +244,7 @@ class AirGraspDrop(Node):
 
         cur = Pose(
             wrist_extension=0.20,
-            joint_lift=0.35,
+            joint_lift=0.6,
             joint_wrist_yaw=0.0,
             joint_wrist_pitch=-0.30,
             joint_wrist_roll=0.0,
@@ -286,7 +286,7 @@ def main():
     parser = argparse.ArgumentParser(description="Air-grasp then drop at right/middle/left (apparent grasp/release)")
     parser.add_argument("--drop", choices=["right", "middle", "left"], default="middle",
                         help="Where to release (default: middle)")
-    parser.add_argument("--step-m", type=float, default=0.45,
+    parser.add_argument("--step-m", type=float, default=0.4,
                         help="Forward distance (m) between right->middle and middle->left (default: 0.45)")
     parser.add_argument("--speed", type=float, default=0.05,
                         help="Forward driving speed (m/s) (default: 0.05)")

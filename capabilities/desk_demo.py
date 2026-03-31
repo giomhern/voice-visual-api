@@ -60,6 +60,13 @@ class Config:
     traj_server_wait_s: float = 5.0
     traj_timeout_s: float = 30.0
 
+    # Pre-wipe pose
+    prewipe_lift_m: float = 0.8
+    prewipe_wrist_yaw_rad: float = 0.10929613113685194
+    prewipe_head_pan_rad: float = -1.7996282068213987
+    prewipe_head_tilt_rad: float = -0.799664042887519
+    prewipe_extension_m: float = 0.10261581340392491
+
 
 class SurfaceCleanDesk(Node):
     def __init__(self, cfg: Config):
@@ -204,24 +211,34 @@ class SurfaceCleanDesk(Node):
         return ok
 
     def _prewipe_pose(self) -> bool:
-        # Goal A: everything EXCEPT extension
+        # Goal A: raise the lift first
         ok = self._send_traj(
-            joint_names=["joint_lift", "joint_wrist_yaw", "joint_head_pan", "joint_head_tilt"],
+            joint_names=["joint_lift"],
             positions=[
-                0.906026669779699,          # lift
-                0.10929613113685194,        # wrist_yaw
-                -1.7996282068213987,        # head_pan
-                -0.799664042887519,         # head_tilt
+                self.cfg.prewipe_lift_m,
+            ],
+            duration_s=2.5,
+        )
+        if not ok:
+            return False
+
+        # Goal B: rotate wrist and set head pose after lift is up
+        ok = self._send_traj(
+            joint_names=["joint_wrist_yaw", "joint_head_pan", "joint_head_tilt"],
+            positions=[
+                self.cfg.prewipe_wrist_yaw_rad,
+                self.cfg.prewipe_head_pan_rad,
+                self.cfg.prewipe_head_tilt_rad,
             ],
             duration_s=2.0,
         )
         if not ok:
             return False
 
-        # Goal B: extension last
+        # Goal C: extension last
         ok = self._send_traj(
             joint_names=["wrist_extension"],
-            positions=[0.10261581340392491],
+            positions=[self.cfg.prewipe_extension_m],
             duration_s=2.0,
         )
         return ok
@@ -246,10 +263,15 @@ class SurfaceCleanDesk(Node):
 
         self.get_logger().info("[PIPE] 4) pre-wipe pose")
         if not self._prewipe_pose():
+            print("[ERROR] CANNOT COMPLETE PREWIPE POSE")
+            self.get_logger().info("[PIPE] recovery: switch_to_navigation_mode after pre-wipe failure")
+            self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=2.0, timeout_s=8.0)
+            time.sleep(0.25)
             return 5
 
         self.get_logger().info("[PIPE] 5) switch_to_navigation_mode")
         if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
+            print("[ERROR] CANNOT SWITCH TO NAV MODE")
             return 7
         time.sleep(0.25)
 

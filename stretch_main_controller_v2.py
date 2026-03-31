@@ -26,33 +26,42 @@ Usage:
 
 import argparse
 import json
-import math
+import json as _json
 import os
 import queue
+import signal
 import subprocess
 import sys
 import threading
 import time
+import urllib.request
 
 import yaml
 import rclpy
 from flask import Flask, jsonify, request as flask_request
 from rclpy.node import Node
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Twist
 from rcl_interfaces.srv import SetParameters
 from rcl_interfaces.msg import Parameter, ParameterValue, ParameterType
-from tf2_ros import Buffer, TransformListener
+from std_srvs.srv import Trigger
 
-# Import config loader from same directory
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from stretch_config_loader import StretchConfigLoader, ValueMappings
+# Import config loader and FUNMAP navigator from same repo
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
+from stretch_config_loader import StretchConfigLoader
+
+_STUDY_PKG = os.path.join(_HERE, "src", "stretch_study", "stretch_study")
+sys.path.insert(0, _STUDY_PKG)
+from capabilities.funmap_navigator import FunmapNavigator
+
+GOALS_YAML = os.path.join(_STUDY_PKG, "config", "goals.yml")
 
 
 # =============================================================================
 # Helpers
 # =============================================================================
 
-SPEED_TO_SCALE = {"slow": 0.3, "medium": 1.0, "fast": 1.5}
+FUNMAP_SPEED = {"slow": 0.2, "medium": 0.25, "fast": 0.3}
 
 CAPABILITIES_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -71,32 +80,19 @@ ACTION_MAP = {
 }
 
 
-def yaw_to_quat(yaw: float):
-    """Convert yaw angle to quaternion (x, y, z, w)."""
-    return (0.0, 0.0, math.sin(yaw / 2.0), math.cos(yaw / 2.0))
-
-
-def apply_stand_off(x, y, yaw, stand_off_m):
-    """Offset goal position backwards along its facing direction."""
-    if stand_off_m <= 0:
-        return x, y
-    ox = x - stand_off_m * math.cos(yaw)
-    oy = y - stand_off_m * math.sin(yaw)
-    return ox, oy
-
-
 # =============================================================================
 # Main Controller Node
 # =============================================================================
 
 class StretchMainController(Node):
 
-    def __init__(self, voice_url=None, flask_port=5060, manual=False):
+    def __init__(self, voice_url=None, flask_port=5060, manual=False, start_section=1):
         super().__init__("stretch_main_controller")
 
         self.voice_url = voice_url.rstrip("/") if voice_url else None
         self.flask_port = flask_port
         self.manual = manual
+        self.start_section = start_section
 
         # --- Config loader (remote or local) ---
         self.loader = StretchConfigLoader(remote_url=voice_url)
@@ -112,15 +108,26 @@ class StretchMainController(Node):
         self.bed = None
         self.kitchen = None
         self.general = None
-        # --- ROS2 interfaces ---
-        self.goal_pub = self.create_publisher(PoseStamped, "/goal_pose", 10)
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
+        # --- FUNMAP navigator (publishes goal_pose, monitors TF for arrival) ---
+        self.nav = FunmapNavigator(self, goals_yaml=GOALS_YAML)
 
-        # --- cmd_vel scaler parameter client ---
-        self.scaler_client = self.create_client(
-            SetParameters, "/cmd_vel_scaler/set_parameters"
+        # --- FUNMAP velocity parameter client ---
+        self.funmap_param_client = self.create_client(
+            SetParameters, "/funmap/set_parameters"
         )
+
+        # --- Driver mode switching ---
+        self.srv_position_mode = self.create_client(
+            Trigger, "/switch_to_position_mode"
+        )
+        self.srv_navigation_mode = self.create_client(
+            Trigger, "/switch_to_navigation_mode"
+        )
+
+        # --- Ambient movement state ---
+        self._ambient_proc = None
+        self._ambient_enabled = False
+        self._cmd_vel_pub = self.create_publisher(Twist, "/stretch/cmd_vel", 10)
 
         # --- Keyboard input for manual mode ---
         self._key_event = threading.Event()
@@ -199,26 +206,94 @@ class StretchMainController(Node):
             value = ev.get("value")
             self.live_settings[key] = value
             self.get_logger().info(f"[Setting] {key} = {value}")
+            # Immediately stop ambient if user turned it off
+            if key == "ambient_movement" and value == "off":
+                self.stop_ambient()
         elif event_type == "user_confirmed":
-            self.run_capability("nod.py")
+            was_ambient = self._ambient_enabled
+            self.stop_ambient()
+            self.run_capability("nod.py", wait=True)
+            if was_ambient:
+                self.start_ambient()
         elif event_type == "action":
             self._handle_action(ev.get("action", ""))
         else:
             self.get_logger().info(f"[Event] Unhandled: {ev}")
 
     def _handle_action(self, action: str):
-        """Dispatch an ACTION tag to the appropriate demo."""
+        """Navigate to the station, then run the demo."""
         if action not in ACTION_MAP:
             self.get_logger().warn(f"[Action] Unknown action: {action}")
             return
         room, param = ACTION_MAP[action]
         self.get_logger().info(f"[Action] Dispatching: {action} -> {room}({param})")
+        was_ambient = self._ambient_enabled
+        self.stop_ambient()
+
+        # Use speed from live_settings (already pushed before ACTION)
+        speed = self.live_settings.get("room_movement_speed", "medium")
+        self.get_logger().info(f"[Action] Navigating to {room} (speed={speed}) before demo")
+        self.navigate_to(room, speed, social_distance_m=0.0)
+
         if room == "desk":
             self.desk_demo(param)
         elif room == "bed":
             self.bed_demo(param)
         elif room == "kitchen":
             self.kitchen_demo(param)
+
+        # Notify voice assistant that demo is done so it continues
+        self._notify_demo_complete(room)
+
+        if was_ambient:
+            self.start_ambient()
+
+    def _notify_demo_complete(self, room: str):
+        """POST demo_complete to the voice assistant so it continues the conversation."""
+        if not self.voice_url:
+            return
+        url = f"{self.voice_url}/api/demo_complete"
+        data = _json.dumps({"result": f"{room} demo complete"}).encode()
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                self.get_logger().info(f"[DemoNotify] Notified voice assistant: {resp.status}")
+        except Exception as e:
+            self.get_logger().warn(f"[DemoNotify] Failed to notify voice assistant: {e}")
+
+    # -----------------------------------------------------------------
+    # Ambient movement
+    # -----------------------------------------------------------------
+
+    def start_ambient(self):
+        """Start ambient movement background process (respects user preference)."""
+        if self.live_settings.get("ambient_movement", "on") == "off":
+            self.get_logger().info("[Ambient] Skipped — user set ambient movement to off")
+            return
+        self._ambient_enabled = True
+        if self._ambient_proc is not None and self._ambient_proc.poll() is None:
+            return  # already running
+        self._ambient_proc = subprocess.Popen(
+            ["python3", os.path.join(CAPABILITIES_DIR, "ambient_movement.py")]
+        )
+        self.get_logger().info("[Ambient] Started")
+
+    def stop_ambient(self):
+        """Stop ambient movement background process."""
+        self._ambient_enabled = False
+        if self._ambient_proc is None or self._ambient_proc.poll() is not None:
+            self._ambient_proc = None
+            return
+        self._ambient_proc.send_signal(signal.SIGINT)
+        try:
+            self._ambient_proc.wait(timeout=3.0)
+        except subprocess.TimeoutExpired:
+            self._ambient_proc.kill()
+            self._ambient_proc.wait()
+        self._ambient_proc = None
+        # Zero out base velocity
+        self._cmd_vel_pub.publish(Twist())
+        self.get_logger().info("[Ambient] Stopped")
 
     # -----------------------------------------------------------------
     # Capability scripts (subprocess)
@@ -274,99 +349,79 @@ class StretchMainController(Node):
     # -----------------------------------------------------------------
 
     def set_speed(self, speed: str):
-        scale = SPEED_TO_SCALE.get(speed, 1.0)
-        self.get_logger().info(f"[Speed] Setting cmd_vel_scaler scale={scale}")
+        """Set FUNMAP base_translate_velocity and base_rotate_velocity."""
+        vel = FUNMAP_SPEED.get(speed, 0.25)
+        self.get_logger().info(f"[Speed] Setting FUNMAP velocities to {vel} m/s (speed={speed})")
 
-        if not self.scaler_client.wait_for_service(timeout_sec=2.0):
-            self.get_logger().warn("[Speed] cmd_vel_scaler service not available, skipping")
+        if not self.funmap_param_client.wait_for_service(timeout_sec=2.0):
+            self.get_logger().warn("[Speed] /funmap/set_parameters service not available, skipping")
             return
 
-        param = Parameter()
-        param.name = "scale"
-        param.value = ParameterValue()
-        param.value.type = ParameterType.PARAMETER_DOUBLE
-        param.value.double_value = float(scale)
+        params = []
+        for name in ("base_translate_velocity", "base_rotate_velocity"):
+            p = Parameter()
+            p.name = name
+            p.value = ParameterValue()
+            p.value.type = ParameterType.PARAMETER_DOUBLE
+            p.value.double_value = float(vel)
+            params.append(p)
 
         req = SetParameters.Request()
-        req.parameters = [param]
-        future = self.scaler_client.call_async(req)
+        req.parameters = params
+        future = self.funmap_param_client.call_async(req)
         rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
 
         if future.result() is not None:
-            self.get_logger().info(f"[Speed] Scale set to {scale}")
+            self.get_logger().info(f"[Speed] FUNMAP velocities set to {vel}")
         else:
-            self.get_logger().warn("[Speed] Failed to set scale")
+            self.get_logger().warn("[Speed] Failed to set FUNMAP velocities")
+
+    # -----------------------------------------------------------------
+    # Driver mode switching
+    # -----------------------------------------------------------------
+
+    def _switch_mode(self, client, name: str):
+        """Call a switch_to_*_mode Trigger service."""
+        if not client.wait_for_service(timeout_sec=5.0):
+            self.get_logger().warn(f"[Mode] {name} service not available")
+            return False
+        future = client.call_async(Trigger.Request())
+        rclpy.spin_until_future_complete(self, future, timeout_sec=10.0)
+        if future.result() is not None:
+            self.get_logger().info(f"[Mode] {name}: {future.result().message}")
+            return future.result().success
+        self.get_logger().warn(f"[Mode] {name} call failed")
+        return False
+
+    def switch_to_position_mode(self):
+        return self._switch_mode(self.srv_position_mode, "switch_to_position_mode")
+
+    def switch_to_navigation_mode(self):
+        return self._switch_mode(self.srv_navigation_mode, "switch_to_navigation_mode")
 
     # -----------------------------------------------------------------
     # Navigation
     # -----------------------------------------------------------------
 
-    def _get_robot_xy(self):
-        try:
-            tf = self.tf_buffer.lookup_transform(
-                self.frame_id, "base_link", rclpy.time.Time()
-            )
-            return (tf.transform.translation.x, tf.transform.translation.y)
-        except Exception:
-            return None
-
     def navigate_to(
         self,
         room: str,
         speed: str,
-        social_distance_m: float,
+        social_distance_m: float = 0.0,
         timeout_s: float = 120.0,
         arrive_dist_m: float = 0.35,
     ) -> bool:
-        if room not in self.goals:
-            self.get_logger().error(f"[Nav] Unknown room: {room}")
-            return False
-
-        goal = self.goals[room]
-        gx, gy, gyaw = float(goal["x"]), float(goal["y"]), float(goal["yaw"])
-        gx, gy = apply_stand_off(gx, gy, gyaw, social_distance_m)
-
-        velocity = ValueMappings.get_velocity(speed)
-        self.get_logger().info(
-            f"[Nav] -> {room} | speed={speed} ({velocity} m/s) | "
-            f"social_distance={social_distance_m:.2f}m | "
-            f"target=({gx:.2f}, {gy:.2f})"
-        )
-
+        self.get_logger().info(f"[Nav] -> {room} | speed={speed}")
         self.set_speed(speed)
-
-        msg = PoseStamped()
-        msg.header.frame_id = self.frame_id
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.pose.position.x = gx
-        msg.pose.position.y = gy
-        qx, qy, qz, qw = yaw_to_quat(gyaw)
-        msg.pose.orientation.x = qx
-        msg.pose.orientation.y = qy
-        msg.pose.orientation.z = qz
-        msg.pose.orientation.w = qw
-        self.goal_pub.publish(msg)
-
-        start = time.time()
-        last_log = 0.0
-        while time.time() - start < timeout_s:
-            rclpy.spin_once(self, timeout_sec=0.1)
-            # Process any queued events while navigating
-            self.drain_events()
-            pos = self._get_robot_xy()
-            if pos is None:
-                continue
-            dist = math.hypot(pos[0] - gx, pos[1] - gy)
-            now = time.time()
-            if now - last_log >= 3.0:
-                last_log = now
-                self.get_logger().info(f"[Nav] {room}: distance={dist:.2f}m")
-            if dist <= arrive_dist_m:
-                self.get_logger().info(f"[Nav] Arrived at {room} (dist={dist:.2f}m)")
-                return True
-
-        self.get_logger().warn(f"[Nav] Timeout reaching {room} after {timeout_s:.0f}s")
-        return False
+        self.switch_to_position_mode()
+        arrived = self.nav.goto(
+            name=room,
+            timeout_s=timeout_s,
+            arrive_dist_m=arrive_dist_m,
+            stand_off_m=social_distance_m,
+        )
+        self.switch_to_navigation_mode()
+        return arrived
 
     # -----------------------------------------------------------------
     # Demo placeholders
@@ -400,92 +455,75 @@ class StretchMainController(Node):
         time.sleep(2.0)
         rclpy.spin_once(self, timeout_sec=1.0)
 
+        ss = self.start_section
+        if ss > 1:
+            self.get_logger().info(f"[Init] Skipping to section {ss}")
+            self.start_ambient()
+
         # =============================================================
         # SESSION START: hello greeting (runs while voice assistant speaks)
         # =============================================================
-        if self.manual:
-            self.wait_for_operator("Press ENTER to start hello greeting...")
-        else:
-            self.wait_for_event("session_start")
+        if ss <= 1:
+            if self.manual:
+                self.wait_for_operator("Press ENTER to start hello greeting...")
+            else:
+                self.wait_for_event("session_start")
 
-        self.run_capability("hello.py")  # non-blocking: robot waves while assistant speaks
+            self.run_capability("hello.py", wait=True)
+            self.start_ambient()
 
-        # =============================================================
-        # PHASE 1: Wait for section 1 complete → move to desk
-        # =============================================================
-        if self.manual:
-            self.wait_for_operator("Section 1 done. Press ENTER to move to DESK...")
-        else:
-            self.wait_for_event("section_complete")  # section 1
+            # =============================================================
+            # PHASE 1: Wait for section 1 complete (general settings)
+            # =============================================================
+            if self.manual:
+                self.wait_for_operator("Section 1 done. Press ENTER to continue...")
+            else:
+                self.wait_for_event("section_complete")  # section 1
 
-        self.general = self.loader.load_general_settings()
-        self.get_logger().info(
-            f"[Config] General: personality={self.general.personality}, "
-            f"explainability={self.general.explainability_level}"
-        )
-
-        # Move to desk using precise path (blocking — processes events while moving)
-        self.run_capability(
-            "movement_to_desk.py", args=["--speed", "medium"], wait=True,
-        )
+            self.general = self.loader.load_general_settings()
+            self.get_logger().info(
+                f"[Config] General: personality={self.general.personality}, "
+                f"explainability={self.general.explainability_level}"
+            )
 
         # =============================================================
-        # PHASE 2: At desk — voice assistant configures, triggers demo,
-        #          then completes section 2 → navigate to bed
+        # PHASE 2: Wait for section 2 (desk configs + demo).
+        #          ACTION event triggers navigate_to + demo automatically.
         # =============================================================
-        if self.manual:
-            self.wait_for_operator("At desk. Press ENTER when desk section is done...")
-        else:
-            # Wait for section 2 completion.
-            # ACTION events and setting_confirmed events will be handled
-            # automatically by wait_for_event's internal drain loop.
-            self.wait_for_event("section_complete")  # section 2
+        if ss <= 2:
+            if self.manual:
+                self.wait_for_operator("Section 2 done. Press ENTER...")
+            else:
+                self.wait_for_event("section_complete")  # section 2
 
-        self.desk = self.loader.load_desk_settings()
-        desk_social_m = ValueMappings.get_distance_meters(self.desk.social_distance)
-        self.get_logger().info(
-            f"[Config] Desk: speed={self.desk.movement_speed}, "
-            f"social_distance={self.desk.social_distance} ({desk_social_m:.2f}m), "
-            f"cleaning={self.desk.cleaning_thoroughness}"
-        )
-
-        # Load bed settings for social distance at destination
-        self.bed = self.loader.load_bed_settings()
-        bed_social_m = ValueMappings.get_distance_meters(self.bed.social_distance)
-
-        # Navigate to bed using desk speed + bed social distance
-        self.navigate_to("bed", self.desk.movement_speed, bed_social_m)
+            self.desk = self.loader.load_desk_settings()
+            self.get_logger().info(
+                f"[Config] Desk: speed={self.desk.movement_speed}, "
+                f"cleaning={self.desk.cleaning_thoroughness}"
+            )
 
         # =============================================================
-        # PHASE 3: At bed — voice assistant configures, triggers demo,
-        #          then completes section 3 → navigate to kitchen
+        # PHASE 3: Wait for section 3 (bed configs + demo).
+        #          ACTION event triggers navigate_to + demo automatically.
         # =============================================================
-        if self.manual:
-            self.wait_for_operator("At bed. Press ENTER when bed section is done...")
-        else:
-            self.wait_for_event("section_complete")  # section 3
+        if ss <= 3:
+            if self.manual:
+                self.wait_for_operator("Section 3 done. Press ENTER...")
+            else:
+                self.wait_for_event("section_complete")  # section 3
 
-        self.bed = self.loader.load_bed_settings()
-        bed_social_m = ValueMappings.get_distance_meters(self.bed.social_distance)
-        self.get_logger().info(
-            f"[Config] Bed: speed={self.bed.movement_speed}, "
-            f"social_distance={self.bed.social_distance} ({bed_social_m:.2f}m), "
-            f"pillow={self.bed.pillow_arrangement}"
-        )
-
-        # Load kitchen settings for social distance at destination
-        self.kitchen = self.loader.load_kitchen_settings()
-        kitchen_social_m = ValueMappings.get_distance_meters(self.kitchen.social_distance)
-
-        # Navigate to kitchen using bed speed + kitchen social distance
-        self.navigate_to("kitchen", self.bed.movement_speed, kitchen_social_m)
+            self.bed = self.loader.load_bed_settings()
+            self.get_logger().info(
+                f"[Config] Bed: speed={self.bed.movement_speed}, "
+                f"pillow={self.bed.pillow_arrangement}"
+            )
 
         # =============================================================
-        # PHASE 4: At kitchen — voice assistant configures, triggers demo,
-        #          then completes section 4 → done
+        # PHASE 4: Wait for section 4 (kitchen configs + demo).
+        #          ACTION event triggers navigate_to + demo automatically.
         # =============================================================
         if self.manual:
-            self.wait_for_operator("At kitchen. Press ENTER when kitchen section is done...")
+            self.wait_for_operator("Section 4 done. Press ENTER...")
         else:
             self.wait_for_event("section_complete")  # section 4
 
@@ -524,6 +562,13 @@ def main():
         action="store_true",
         help="Use manual operator mode (Enter key) instead of event-driven",
     )
+    parser.add_argument(
+        "--start-section",
+        type=int,
+        default=1,
+        choices=[1, 2, 3, 4],
+        help="Skip ahead to this section (default: 1)",
+    )
     args, ros_args = parser.parse_known_args()
 
     rclpy.init(args=ros_args)
@@ -531,6 +576,7 @@ def main():
         voice_url=args.voice_url,
         flask_port=args.port,
         manual=args.manual,
+        start_section=args.start_section,
     )
 
     # Start event receiver
@@ -541,6 +587,7 @@ def main():
     except KeyboardInterrupt:
         node.get_logger().info("[Controller] Interrupted by user")
     finally:
+        node.stop_ambient()
         node.destroy_node()
         rclpy.shutdown()
 

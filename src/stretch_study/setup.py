@@ -11,6 +11,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['stretch_study/launch/study.launch.py']),
         ('share/' + package_name + '/config', ['stretch_study/config/defaults.yaml']),
+        ('share/' + package_name + '/config', ['stretch_study/config/goals.yml']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -27,7 +28,9 @@ setup(
             'voice_assistant_node = stretch_study.nodes.voice_assistant_node:main',
             'cmd_vel_scaler = stretch_study.nodes.cmd_vel_scaler:main',
             "settings_bridge_server = stretch_study.nodes.settings_bridge_server:main",
-            "clean_surface_exec = stretch_study.nodes.clean_surface_exec:main"
+            "clean_surface_exec = stretch_study.nodes.clean_surface_exec:main",
+            "funmap_space_cycle = stretch_study.capabilities.funmap_space_cycle:main",
+            "pickup_drop_sequence = stretch_study.capabilities.pickup_drop_sequence:main",
         ],
     },
 )
