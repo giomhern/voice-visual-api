@@ -61,7 +61,7 @@ class Config:
     traj_timeout_s: float = 30.0
 
     # Pre-wipe pose
-    prewipe_lift_m: float = 0.8
+    prewipe_lift_m: float = 0.6
     prewipe_wrist_yaw_rad: float = 0.10929613113685194
     prewipe_head_pan_rad: float = -1.7996282068213987
     prewipe_head_tilt_rad: float = -0.799664042887519
