@@ -4,19 +4,17 @@ from __future__ import annotations
 import math
 import time
 from dataclasses import dataclass
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 import rclpy
-from rclpy.node import Node
-from rclpy.action import ActionClient
-
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist
-from std_srvs.srv import Trigger
-
-from control_msgs.action import FollowJointTrajectory
-from trajectory_msgs.msg import JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
+from control_msgs.action import FollowJointTrajectory
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+from rclpy.action import ActionClient
+from rclpy.node import Node
+from std_srvs.srv import Trigger
+from trajectory_msgs.msg import JointTrajectoryPoint
 
 
 def quat_to_yaw(x: float, y: float, z: float, w: float) -> float:
@@ -37,32 +35,21 @@ def wrap_pi(a: float) -> float:
 class Config:
     cmd_vel_topic: str = "/stretch/cmd_vel"
     odom_topic: str = "/odom"
-
-    # Mode switch services (Trigger)
     switch_to_nav_srv: str = "/switch_to_navigation_mode"
     switch_to_pos_srv: str = "/switch_to_position_mode"
-
-    # Surface cleaning Trigger service (Hello Robot demo)
-    clean_surface_srv: str = "/clean_surface/trigger_clean_surface"
-
-    # Trajectory action
     traj_action_name: str = "/stretch_controller/follow_joint_trajectory"
 
-    # Turn parameters
-    turn_left_rad: float = math.pi / 4.0
+    turn_left_rad: float = 83 * math.pi / 180
     yaw_tol_rad: float = math.radians(2.0)
     max_wz: float = 0.6
     kp_yaw: float = 1.8
     rate_hz: float = 30.0
     turn_timeout_s: float = 20.0
-
     post_turn_settle_s: float = 1.0
 
-    # Trajectory timing
     traj_server_wait_s: float = 5.0
     traj_timeout_s: float = 30.0
 
-    # Pre-wipe pose
     prewipe_lift_m: float = 0.9
     prewipe_wrist_yaw_rad: float = 0.10929613113685194
     prewipe_head_pan_rad: float = -1.7996282068213987
@@ -70,23 +57,20 @@ class Config:
     prewipe_extension_m: float = 0.15
 
 
-class SurfaceCleanDesk(Node):
+class PrewipePoseTest(Node):
     def __init__(self, cfg: Config):
-        super().__init__("surface_clean_desk")
+        super().__init__("prewipe_pose_test")
         self.cfg = cfg
 
         self._yaw: Optional[float] = None
         self._pose_xy: Optional[Tuple[float, float]] = None
+        self._mode: Optional[str] = None
 
         self.cmd_pub = self.create_publisher(Twist, cfg.cmd_vel_topic, 10)
         self.create_subscription(Odometry, cfg.odom_topic, self._on_odom, 50)
 
-        # Trigger clients
         self.srv_nav = self.create_client(Trigger, cfg.switch_to_nav_srv)
         self.srv_pos = self.create_client(Trigger, cfg.switch_to_pos_srv)
-        self.srv_clean = self.create_client(Trigger, cfg.clean_surface_srv)
-
-        # Trajectory action
         self.traj_client = ActionClient(self, FollowJointTrajectory, cfg.traj_action_name)
 
     def _on_odom(self, msg: Odometry):
@@ -95,8 +79,11 @@ class SurfaceCleanDesk(Node):
         self._pose_xy = (p.x, p.y)
         self._yaw = quat_to_yaw(q.x, q.y, q.z, q.w)
 
-    # ---------- helpers ----------
     def _stop_base(self, settle_s: float = 0.25):
+        if self._mode != "navigation":
+            time.sleep(settle_s)
+            return
+
         z = Twist()
         for _ in range(5):
             self.cmd_pub.publish(z)
@@ -119,13 +106,17 @@ class SurfaceCleanDesk(Node):
             resp = fut.result()
             ok = bool(resp.success)
             self.get_logger().info(f"[SRV] {name}: success={ok} msg='{resp.message}'")
+            if ok:
+                if name == self.cfg.switch_to_nav_srv:
+                    self._mode = "navigation"
+                elif name == self.cfg.switch_to_pos_srv:
+                    self._mode = "position"
             return ok
         except Exception as e:
             self.get_logger().error(f"[SRV] {name} failed: {e}")
             return False
 
     def _turn_relative(self, delta_rad: float) -> bool:
-        # Wait for odom
         t0 = time.time()
         while rclpy.ok() and self._yaw is None and (time.time() - t0) < 5.0:
             rclpy.spin_once(self, timeout_sec=0.1)
@@ -174,8 +165,6 @@ class SurfaceCleanDesk(Node):
 
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = list(joint_names)
-
-        # Important: don't set a future stamp
         goal.trajectory.header.stamp.sec = 0
         goal.trajectory.header.stamp.nanosec = 0
 
@@ -213,18 +202,14 @@ class SurfaceCleanDesk(Node):
         return ok
 
     def _prewipe_pose(self) -> bool:
-        # Goal A: raise the lift first
         ok = self._send_traj(
             joint_names=["joint_lift"],
-            positions=[
-                self.cfg.prewipe_lift_m,
-            ],
+            positions=[self.cfg.prewipe_lift_m],
             duration_s=2.5,
         )
         if not ok:
             return False
 
-        # Goal B: rotate wrist and set head pose after lift is up
         ok = self._send_traj(
             joint_names=["joint_wrist_yaw", "joint_head_pan", "joint_head_tilt"],
             positions=[
@@ -237,7 +222,6 @@ class SurfaceCleanDesk(Node):
         if not ok:
             return False
 
-        # Goal C: extension last
         ok = self._send_traj(
             joint_names=["wrist_extension"],
             positions=[self.cfg.prewipe_extension_m],
@@ -245,51 +229,8 @@ class SurfaceCleanDesk(Node):
         )
         return ok
 
-    # ---------- main pipeline ----------
-    def run(self, wipes: int = 1) -> int:
-        self.get_logger().info(f"[PIPE] Starting desk demo ({wipes} wipe(s))")
-
-        self.get_logger().info("[PIPE] 1) switch_to_navigation_mode")
-        if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
-            return 2
-        time.sleep(0.25)
-
-        self.get_logger().info("[PIPE] 2) turn left precisely (odom-based)")
-        if not self._turn_relative(self.cfg.turn_left_rad):
-            return 3
-        self._stop_base(settle_s=self.cfg.post_turn_settle_s)
-
-        self.get_logger().info("[PIPE] 3) switch_to_position_mode")
-        if not self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0):
-            return 4
-        time.sleep(0.25)
-
-        self.get_logger().info("[PIPE] 4) pre-wipe pose")
-        if not self._prewipe_pose():
-            print("[ERROR] CANNOT COMPLETE PREWIPE POSE")
-            self.get_logger().info("[PIPE] recovery: switch_to_navigation_mode after pre-wipe failure")
-            self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=2.0, timeout_s=8.0)
-            time.sleep(0.25)
-            return 5
-
-        self.get_logger().info("[PIPE] 5) switch_to_navigation_mode")
-        if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
-            print("[ERROR] CANNOT SWITCH TO NAV MODE")
-            return 7
-        time.sleep(0.25)
-
-        for i in range(wipes):
-            self.get_logger().info(f"[PIPE] 6) trigger clean_surface (wipe {i + 1}/{wipes})")
-            if not self._call_trigger(self.srv_clean, self.cfg.clean_surface_srv, wait_s=10.0, timeout_s=90.0):
-                return 6
-            if i < wipes - 1:
-                time.sleep(0.5)  # brief pause between wipes
-
-        self.get_logger().info(f"[PIPE] DONE ({wipes} wipe(s) complete)")
-        return 0
-
-    def run_prewipe_only(self) -> int:
-        self.get_logger().info("[PIPE] Starting desk pre-wipe only sequence")
+    def run(self) -> int:
+        self.get_logger().info("[PIPE] Starting standalone pre-wipe pose test")
 
         self.get_logger().info("[PIPE] 1) switch_to_navigation_mode")
         if not self._call_trigger(self.srv_nav, self.cfg.switch_to_nav_srv, wait_s=5.0, timeout_s=12.0):
@@ -318,18 +259,10 @@ class SurfaceCleanDesk(Node):
 
 
 def main():
-    import argparse
-    parser = argparse.ArgumentParser(description="Desk surface cleaning demo")
-    parser.add_argument(
-        "--wipes", type=int, choices=[1, 2, 3], default=1,
-        help="Number of wipe passes (1=once, 2=twice, 3=thoroughly)",
-    )
-    args, ros_args = parser.parse_known_args()
-
-    rclpy.init(args=ros_args)
-    node = SurfaceCleanDesk(Config())
+    rclpy.init()
+    node = PrewipePoseTest(Config())
     try:
-        rc = node.run(wipes=args.wipes)
+        rc = node.run()
     finally:
         node._stop_base()
         node.destroy_node()

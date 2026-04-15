@@ -24,6 +24,7 @@ class Config:
     # Mode switch services
     switch_to_nav_srv: str = "/switch_to_navigation_mode"
     switch_to_pos_srv: str = "/switch_to_position_mode"
+    stow_srv: str = "/stow_the_robot"
 
     # Trajectory action
     traj_action_name: str = "/stretch_controller/follow_joint_trajectory"
@@ -57,6 +58,7 @@ class AirGraspDrop(Node):
 
         self.srv_nav = self.create_client(Trigger, cfg.switch_to_nav_srv)
         self.srv_pos = self.create_client(Trigger, cfg.switch_to_pos_srv)
+        self.srv_stow = self.create_client(Trigger, cfg.stow_srv)
 
         self.traj_client = ActionClient(self, FollowJointTrajectory, cfg.traj_action_name)
 
@@ -97,6 +99,9 @@ class AirGraspDrop(Node):
 
     def _ensure_pos_mode(self) -> bool:
         return self._call_trigger(self.srv_pos, self.cfg.switch_to_pos_srv, wait_s=5.0, timeout_s=12.0)
+
+    def _stow_robot(self) -> bool:
+        return self._call_trigger(self.srv_stow, self.cfg.stow_srv, wait_s=5.0, timeout_s=40.0)
 
     def _stop_base_nav(self, settle_s: float = 0.15):
         """Stop base safely: ensure nav mode before publishing Twist(0)."""
@@ -190,50 +195,116 @@ class AirGraspDrop(Node):
         time.sleep(0.15)
         return ok
 
-    # ---------- “make it apparent” sequence ----------
-    def _apparent_grasp(self, cur: Pose, open_wide: float, closed: float) -> Pose | None:
-        # Big open (obvious)
-        self.get_logger().info("[SHOW] Open wide (ready to grasp)")
+    def _send_joint_subset(self, joint_names: list[str], positions: list[float], duration_s: float) -> bool:
+        if len(joint_names) != len(positions):
+            self.get_logger().error("[TRAJ] joint_names/positions mismatch")
+            return False
+
+        if not self.traj_client.wait_for_server(timeout_sec=float(self.cfg.traj_server_wait_s)):
+            self.get_logger().error(f"[TRAJ] Action not available: {self.cfg.traj_action_name}")
+            return False
+
+        g = FollowJointTrajectory.Goal()
+        g.trajectory.joint_names = list(joint_names)
+        g.trajectory.header.stamp.sec = 0
+        g.trajectory.header.stamp.nanosec = 0
+
+        p1 = JointTrajectoryPoint()
+        p1.positions = list(positions)
+        p1.time_from_start = dur(duration_s)
+        g.trajectory.points = [p1]
+
+        send_fut = self.traj_client.send_goal_async(g)
+        rclpy.spin_until_future_complete(self, send_fut, timeout_sec=float(self.cfg.traj_timeout_s))
+        if not send_fut.done():
+            self.get_logger().error("[TRAJ] send_goal timed out")
+            return False
+
+        gh = send_fut.result()
+        if not gh or not gh.accepted:
+            self.get_logger().error("[TRAJ] goal rejected")
+            return False
+
+        res_fut = gh.get_result_async()
+        rclpy.spin_until_future_complete(self, res_fut, timeout_sec=float(self.cfg.traj_timeout_s))
+        if not res_fut.done():
+            self.get_logger().error("[TRAJ] result timed out")
+            return False
+
+        result = res_fut.result().result
+        ok = int(result.error_code) == 0
+        err_str = getattr(result, "error_string", "")
+        self.get_logger().info(f"[TRAJ] subset done ok={ok} error_code={result.error_code} err='{err_str}'")
+        time.sleep(0.15)
+        return ok
+
+    def _move_to_working_lift(self, cur: Pose, lift_target: float) -> Pose | None:
+        self.get_logger().info("[STEP] Move directly to working lift height")
+        if not self._send_joint_subset(
+            ["joint_lift"],
+            [lift_target],
+            1.5,
+        ):
+            return None
+        lifted = Pose(**{**cur.__dict__, "joint_lift": lift_target})
+        time.sleep(0.2)
+        return lifted
+
+    def _move_wrist_after_lift(self, cur: Pose) -> Pose | None:
+        self.get_logger().info("[STEP] Move wrist after lift")
+        if not self._send_joint_subset(
+            ["joint_wrist_yaw", "joint_wrist_pitch", "joint_wrist_roll"],
+            [0.0, -0.30, 0.0],
+            1.0,
+        ):
+            return None
+        wrist_pose = Pose(
+            **{
+                **cur.__dict__,
+                "joint_wrist_yaw": 0.0,
+                "joint_wrist_pitch": -0.30,
+                "joint_wrist_roll": 0.0,
+            }
+        )
+        time.sleep(0.2)
+        return wrist_pose
+
+    def _open_gripper_full(self, cur: Pose, open_wide: float) -> Pose | None:
+        self.get_logger().info("[STEP] Expand gripper all the way")
         wide = Pose(**{**cur.__dict__, "joint_gripper_finger_left": open_wide})
-        if not self._send_pose(cur, wide, 0.7):
+        if not self._send_pose(cur, wide, 0.8):
             return None
-        time.sleep(0.25)
+        time.sleep(0.2)
+        return wide
 
-        # Slow close (obvious pinch)
-        self.get_logger().info("[SHOW] Close slowly (GRASP)")
-        pinch = Pose(**{**wide.__dict__, "joint_gripper_finger_left": closed})
-        if not self._send_pose(wide, pinch, 1.2):
+    def _extend_then_grasp(self, cur: Pose, extension_m: float, closed: float) -> Pose | None:
+        self.get_logger().info("[STEP] Extend arm")
+        extended = Pose(**{**cur.__dict__, "wrist_extension": extension_m})
+        if not self._send_pose(cur, extended, 1.0):
             return None
+        time.sleep(0.2)
 
-        # Hold closed briefly so it reads as “holding”
-        self.get_logger().info("[SHOW] Hold (carrying)")
-        time.sleep(0.6)
-        return pinch
+        self.get_logger().info("[STEP] Grasp")
+        grasped = Pose(**{**extended.__dict__, "joint_gripper_finger_left": closed})
+        if not self._send_pose(extended, grasped, 1.0):
+            return None
+        time.sleep(0.2)
+        return grasped
 
-    def _apparent_release(self, cur: Pose, open_wide: float, closed: float) -> Pose | None:
-        # Open wide (obvious release)
-        self.get_logger().info("[SHOW] Open wide (RELEASE)")
+    def _release(self, cur: Pose, open_wide: float) -> Pose | None:
+        self.get_logger().info("[STEP] Let go")
         released = Pose(**{**cur.__dict__, "joint_gripper_finger_left": open_wide})
         if not self._send_pose(cur, released, 0.9):
             return None
-
-        # Little pulse to make it super apparent (open->close->open)
-        self.get_logger().info("[SHOW] Release wiggle (open-close-open)")
-        time.sleep(0.2)
-        half_close = Pose(**{**released.__dict__, "joint_gripper_finger_left": max(closed, open_wide - 0.02)})
-        if not self._send_pose(released, half_close, 0.35):
-            return None
-        if not self._send_pose(half_close, released, 0.35):
-            return None
-
         time.sleep(0.2)
         return released
 
     # ---------- main behavior ----------
     def run(self, drop: str, step_m: float, speed_mps: float) -> int:
-        # More “apparent” values
-        grip_open_wide = 0.08   # visibly open
-        grip_closed = 0.01
+        grip_open_wide = 0.5339577172721249
+        grip_closed = 0.0
+        working_lift = 0.6
+        extension_m = 0.30
 
         steps_needed = {"right": 0, "middle": 1, "left": 2}[drop]
         dist_total = steps_needed * float(step_m)
@@ -242,41 +313,69 @@ class AirGraspDrop(Node):
             f"[PLAN] drop='{drop}' steps={steps_needed} step_m={step_m:.3f} total_m={dist_total:.3f}"
         )
 
+        self.get_logger().info("[STEP] Stow robot before starting")
+        if not self._stow_robot():
+            return 2
+
+        start_pose = Pose(
+            joint_lift=0.35,
+        )
+
+        if not self._ensure_pos_mode():
+            return 3
+
+        # 2) get the highest lift specified
+        lifted = self._move_to_working_lift(start_pose, lift_target=working_lift)
+        if lifted is None:
+            return 4
+
+        # Pose used after lift
         cur = Pose(
             wrist_extension=0.20,
-            joint_lift=0.6,
             joint_wrist_yaw=0.0,
             joint_wrist_pitch=-0.30,
             joint_wrist_roll=0.0,
             joint_gripper_finger_left=0.05,
         )
+        cur.joint_lift = lifted.joint_lift
 
-        # 1) Position mode: “apparent grasp”
-        if not self._ensure_pos_mode():
-            return 2
+        # 3) do the wrist pose ONLY
+        wrist_ready = self._move_wrist_after_lift(cur)
+        if wrist_ready is None:
+            return 5
+        cur = wrist_ready
 
-        new_cur = self._apparent_grasp(cur, open_wide=grip_open_wide, closed=grip_closed)
-        if new_cur is None:
-            return 3
-        cur = new_cur
+        # 4) expand the gripper all the way
+        opened = self._open_gripper_full(cur, grip_open_wide)
+        if opened is None:
+            return 6
+        cur = opened
 
-        # 2) Nav mode: drive while “carrying” (closed)
+        # 5) do the extension and then grasp
+        grasped = self._extend_then_grasp(cur, extension_m=extension_m, closed=grip_closed)
+        if grasped is None:
+            return 7
+        cur = grasped
+
+        # 6) do the movement to which side
         if dist_total > 0.0:
             self.get_logger().info(f"[STEP] Carry forward {dist_total:.3f} m")
             self._drive_forward_distance_nav(dist_total, speed_mps)
         else:
-            # still stop in nav mode to keep behavior consistent
             self._stop_base_nav()
 
-        # 3) Position mode: “apparent release”
+        # 7) let go
         if not self._ensure_pos_mode():
-            return 5
+            return 8
 
-        self.get_logger().info(f"[STEP] Release at {drop.upper()}")
-        new_cur = self._apparent_release(cur, open_wide=grip_open_wide, closed=grip_closed)
-        if new_cur is None:
-            return 6
-        cur = new_cur
+        released = self._release(cur, open_wide=grip_open_wide)
+        if released is None:
+            return 9
+
+        # 8) stow
+        self.get_logger().info("[STEP] Stow robot after demo")
+        if not self._stow_robot():
+            return 10
 
         self.get_logger().info("[DONE] Air-grasp drop complete")
         return 0
@@ -286,7 +385,7 @@ def main():
     parser = argparse.ArgumentParser(description="Air-grasp then drop at right/middle/left (apparent grasp/release)")
     parser.add_argument("--drop", choices=["right", "middle", "left"], default="middle",
                         help="Where to release (default: middle)")
-    parser.add_argument("--step-m", type=float, default=0.4,
+    parser.add_argument("--step-m", type=float, default=0.6,
                         help="Forward distance (m) between right->middle and middle->left (default: 0.45)")
     parser.add_argument("--speed", type=float, default=0.05,
                         help="Forward driving speed (m/s) (default: 0.05)")
