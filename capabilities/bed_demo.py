@@ -2,19 +2,36 @@
 from __future__ import annotations
 
 import argparse
+import math
 import time
 from dataclasses import dataclass
+from typing import Optional
 
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 
 from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
 from std_srvs.srv import Trigger
 
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
+
+
+def _quat_to_yaw(x: float, y: float, z: float, w: float) -> float:
+    siny_cosp = 2.0 * (w * z + x * y)
+    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+    return math.atan2(siny_cosp, cosy_cosp)
+
+
+def _wrap_pi(angle: float) -> float:
+    while angle > math.pi:
+        angle -= 2.0 * math.pi
+    while angle < -math.pi:
+        angle += 2.0 * math.pi
+    return angle
 
 
 @dataclass
@@ -55,6 +72,7 @@ class AirGraspDrop(Node):
         self.cfg = cfg
 
         self.cmd_pub = self.create_publisher(Twist, cfg.cmd_vel_topic, 10)
+        self.create_subscription(Odometry, "/odom", self._on_odom, 10)
 
         self.srv_nav = self.create_client(Trigger, cfg.switch_to_nav_srv)
         self.srv_pos = self.create_client(Trigger, cfg.switch_to_pos_srv)
@@ -70,6 +88,12 @@ class AirGraspDrop(Node):
             "joint_wrist_roll",
             "joint_gripper_finger_left",  # ONLY ONE finger joint
         ]
+
+        self._yaw: Optional[float] = None
+
+    def _on_odom(self, msg: Odometry) -> None:
+        q = msg.pose.pose.orientation
+        self._yaw = _quat_to_yaw(q.x, q.y, q.z, q.w)
 
     # ---------- helpers ----------
     def _call_trigger(self, client, name: str, wait_s: float = 5.0, timeout_s: float = 12.0) -> bool:
@@ -134,6 +158,71 @@ class AirGraspDrop(Node):
             time.sleep(0.05)
 
         self._stop_base_nav()
+
+    def _turn_left_92(self,
+                      max_wz: float = 0.4,
+                      min_wz: float = 0.05,
+                      kp_yaw: float = 1.2,
+                      yaw_tol_deg: float = 1.5,
+                      timeout_s: float = 20.0) -> bool:
+        """Turn the base 92° left, closed-loop on /odom yaw.
+        Requires navigation mode for cmd_vel."""
+        if not self._ensure_nav_mode():
+            self.get_logger().error("[TURN] Cannot switch to navigation mode")
+            return False
+
+        # Wait for odom to arrive
+        t0 = time.time()
+        while self._yaw is None and rclpy.ok() and time.time() - t0 < 5.0:
+            rclpy.spin_once(self, timeout_sec=0.1)
+        if self._yaw is None:
+            self.get_logger().error("[TURN] No odometry received; cannot turn")
+            return False
+
+        # Drain any backlog so start_yaw reflects current pose
+        for _ in range(50):
+            rclpy.spin_once(self, timeout_sec=0.0)
+        rclpy.spin_once(self, timeout_sec=0.05)
+
+        start_yaw = self._yaw
+        target_yaw = _wrap_pi(start_yaw + math.radians(92.0))
+        yaw_tol = math.radians(yaw_tol_deg)
+        rate_dt = 1.0 / 30.0
+
+        self.get_logger().info(
+            f"[TURN] Turning left 92° ({math.degrees(start_yaw):.1f}° → {math.degrees(target_yaw):.1f}°)"
+        )
+
+        t0 = time.time()
+        while rclpy.ok():
+            rclpy.spin_once(self, timeout_sec=0.0)
+            if self._yaw is None:
+                time.sleep(rate_dt)
+                continue
+
+            error = _wrap_pi(target_yaw - self._yaw)
+            if abs(error) <= yaw_tol:
+                break
+            if time.time() - t0 > timeout_s:
+                self.get_logger().warn("[TURN] Timed out; stopping early.")
+                break
+
+            wz = max(-max_wz, min(max_wz, kp_yaw * error))
+            if 0.0 < abs(wz) < min_wz:
+                wz = math.copysign(min_wz, wz)
+
+            cmd = Twist()
+            cmd.angular.z = float(wz)
+            self.cmd_pub.publish(cmd)
+            time.sleep(rate_dt)
+
+        # Stop
+        for _ in range(5):
+            self.cmd_pub.publish(Twist())
+            time.sleep(0.05)
+        time.sleep(0.2)
+        self.get_logger().info("[TURN] Left turn complete.")
+        return True
 
     def _send_pose(self, start: Pose, goal: Pose, duration_s: float) -> bool:
         if not self.traj_client.wait_for_server(timeout_sec=float(self.cfg.traj_server_wait_s)):
@@ -310,8 +399,18 @@ class AirGraspDrop(Node):
         dist_total = steps_needed * float(step_m)
 
         self.get_logger().info(
-            f"[PLAN] drop='{drop}' steps={steps_needed} step_m={step_m:.3f} total_m={dist_total:.3f}"
+            f"[PLAN] drop='{drop}' steps={steps_needed} step_m={step_m:.3f} "
+            f"total_m={dist_total:.3f}"
         )
+
+        # The 92° left turn toward the bed runs here so the caller can
+        # teleop facing forward (same orientation as the approach drive).
+        # The social-distance approach is handled upstream by the navigation
+        # script (drive_straight.py --social-offset), so the robot should
+        # already be at the fixed demo position when this runs.
+        self.get_logger().info("[STEP] Turn 92° left toward bed")
+        if not self._turn_left_92():
+            return 11
 
         self.get_logger().info("[STEP] Stow robot before starting")
         if not self._stow_robot():

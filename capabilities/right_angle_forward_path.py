@@ -40,7 +40,8 @@ class Step:
 
 
 class RightAngleForwardPath(Node):
-    def __init__(self, speed: str = "medium", turn_degrees: float = -83.0):
+    def __init__(self, speed: str = "medium", turn_degrees: float = -70.0,
+                 social_offset: float = 0.0):
         super().__init__("right_angle_forward_path")
 
         self.cmd_vel_topic = "/stretch/cmd_vel"
@@ -59,17 +60,26 @@ class RightAngleForwardPath(Node):
         self.max_vx = vx
         self.max_wz = wz
         self.kp_dist = 0.8
-        self.kp_yaw = 1.2            # reduced from 1.8 to slow approach
+        self.kp_yaw = 0.9            # gentler so we decelerate earlier
         self.dist_tol = 0.01
         self.yaw_tol = math.radians(1.5)
-        self.max_turn_wz = 0.3       # cap angular velocity during turns
+        self.max_turn_wz = 0.25      # cap angular velocity during turns
+        self.min_turn_wz = 0.05      # floor to avoid stalling near target
         self.timeout_s = 30.0
+
+        # Second drive leg: full 1.5m minus the social distance offset,
+        # so the controller can stop short of the demo position.
+        second_leg = max(0.3, 1.5 - max(0.0, social_offset))
 
         self.steps: List[Step] = [
             Step("drive", 0.9144),
             Step("turn", math.radians(turn_degrees)),
-            Step("drive", 1.4),
+            Step("drive", second_leg),
         ]
+
+        self.get_logger().info(
+            f"social_offset={social_offset:.2f}m → second drive leg {second_leg:.2f}m"
+        )
 
         self.get_logger().info(
             f"Using speed preset '{speed}' (vx={vx}, wz={wz}), turn={turn_degrees:.1f} deg"
@@ -147,21 +157,57 @@ class RightAngleForwardPath(Node):
         target = wrap_pi(self._yaw + delta_yaw)
         dt = 1.0 / self.rate_hz
 
+        # Slow-zone: start decelerating when this close to target (radians).
+        # Prevents overshoot from rotational momentum.
+        slow_zone = math.radians(12.0)
+
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.0)
             assert self._yaw is not None
 
             error = wrap_pi(target - self._yaw)
             if abs(error) <= self.yaw_tol:
-                return
+                break
             if time.time() - start > self.timeout_s:
                 self.get_logger().warn("Turn timed out; stopping early.")
-                return
+                break
+
+            # Cap by proportional term, then further taper inside slow zone.
+            raw = self.kp_yaw * error
+            if abs(error) < slow_zone:
+                raw *= max(0.35, abs(error) / slow_zone)
+            cmd_wz = max(-self.max_turn_wz, min(self.max_turn_wz, raw))
+            # Keep at least min speed so we don't stall right at the edge
+            if 0 < abs(cmd_wz) < self.min_turn_wz:
+                cmd_wz = math.copysign(self.min_turn_wz, cmd_wz)
 
             cmd = Twist()
-            cmd.angular.z = max(-self.max_turn_wz, min(self.max_turn_wz, self.kp_yaw * error))
+            cmd.angular.z = cmd_wz
             self.pub.publish(cmd)
             time.sleep(dt)
+
+        # Active brake: publish zero repeatedly and monitor for overshoot.
+        # If momentum carries us past target, apply a short counter-torque.
+        for _ in range(10):
+            self.pub.publish(Twist())
+            time.sleep(0.03)
+            rclpy.spin_once(self, timeout_sec=0.0)
+
+        # One-shot counter-torque if we drifted past target
+        err = wrap_pi(target - self._yaw)
+        if abs(err) > self.yaw_tol * 2:
+            direction = 1.0 if err > 0 else -1.0
+            cmd = Twist()
+            cmd.angular.z = direction * self.min_turn_wz * 1.5
+            brake_end = time.time() + min(0.5, abs(err) / self.min_turn_wz)
+            while time.time() < brake_end and rclpy.ok():
+                rclpy.spin_once(self, timeout_sec=0.0)
+                err = wrap_pi(target - self._yaw)
+                if abs(err) <= self.yaw_tol:
+                    break
+                self.pub.publish(cmd)
+                time.sleep(dt)
+            self.pub.publish(Twist())
 
     def _drive_forward(self, distance_m: float):
         assert self._pose_xy is not None
@@ -201,7 +247,7 @@ class RightAngleForwardPath(Node):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Drive 0.9144 m, turn right 90 degrees, then drive 1.3969 m."
+        description="Drive 0.9144 m, turn by --turn-deg, then drive 1.3969 m."
     )
     parser.add_argument(
         "--speed",
@@ -212,13 +258,24 @@ def main():
     parser.add_argument(
         "--turn-deg",
         type=float,
-        default=-83.0,
-        help="Relative turn in degrees. Negative is right turn. Default: -83.0",
+        default=-85.0,
+        help="Relative turn in degrees. Negative is right turn. Default: -85.0",
+    )
+    parser.add_argument(
+        "--social-offset",
+        type=float,
+        default=0.0,
+        help="Stop the final drive leg this many meters short of the nominal "
+             "demo position (used to honor social distance). Default: 0.0",
     )
     args, ros_args = parser.parse_known_args()
 
     rclpy.init(args=ros_args)
-    node = RightAngleForwardPath(speed=args.speed, turn_degrees=args.turn_deg)
+    node = RightAngleForwardPath(
+        speed=args.speed,
+        turn_degrees=args.turn_deg,
+        social_offset=args.social_offset,
+    )
     try:
         rc = node.run()
     finally:
